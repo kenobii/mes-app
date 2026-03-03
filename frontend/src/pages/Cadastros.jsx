@@ -353,11 +353,13 @@ function TabMetas({ targets, stages, refetchTargets, onError }) {
 
 /* ─── aba Usuários ─────────────────────────────────────────── */
 function TabUsuarios({ operators, refetch, onError, me }) {
-  const [search,  setSearch]  = useState('');
-  const [form,    setForm]    = useState({ name: '', email: '' });
-  const [msg,     setMsg]     = useState(null);
-  const [editId,  setEditId]  = useState(null);
-  const [editVal, setEditVal] = useState({});
+  const [search,     setSearch]     = useState('');
+  const [form,       setForm]       = useState({ name: '', email: '' });
+  const [msg,        setMsg]        = useState(null);
+  const [editId,     setEditId]     = useState(null);
+  const [editVal,    setEditVal]    = useState({});
+  const [resetMsg,   setResetMsg]   = useState(null); // { opId, text, isPassword }
+  const [resetting,  setResetting]  = useState(null); // id sendo redefinido
 
   const filtered = useMemo(() =>
     (operators || []).filter(o => o.name.toLowerCase().includes(search.toLowerCase())),
@@ -386,6 +388,23 @@ function TabUsuarios({ operators, refetch, onError, me }) {
       setEditId(null);
       refetch();
     } catch (e) { onError(e.message); }
+  }
+
+  async function resetPassword(op) {
+    if (!window.confirm(`Redefinir senha de "${op.name}"?`)) return;
+    setResetting(op.id);
+    setResetMsg(null);
+    try {
+      const res = await api.post(`/operators/${op.id}/reset-password`, {});
+      if (res.emailSent) {
+        setResetMsg({ opId: op.id, text: `Senha enviada para ${op.email}`, isPassword: false });
+      } else if (res.tempPassword) {
+        setResetMsg({ opId: op.id, text: `Senha temporária: ${res.tempPassword}`, isPassword: true });
+      } else {
+        setResetMsg({ opId: op.id, text: 'Senha redefinida (email não configurado)', isPassword: false });
+      }
+    } catch (e) { onError(e.message); }
+    finally { setResetting(null); }
   }
 
   async function toggleRole(op) {
@@ -420,6 +439,13 @@ function TabUsuarios({ operators, refetch, onError, me }) {
         </button>
       </div>
       {msg && <p className="text-xs text-green-600 font-medium">{msg}</p>}
+      {resetMsg && (
+        <div className={`flex items-center justify-between text-xs rounded-lg px-3 py-2
+          ${resetMsg.isPassword ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+          <span>{resetMsg.text}</span>
+          <button onClick={() => setResetMsg(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
       <p className="text-xs text-gray-400">
         Se o email for informado, uma senha temporária será enviada automaticamente.
         Clique no badge de <strong>Perfil</strong> ou <strong>Status</strong> para alternar.
@@ -502,10 +528,21 @@ function TabUsuarios({ operators, refetch, onError, me }) {
                           </button>
                         </Td>
                         <Td className="text-center">
-                          <button onClick={() => startEdit(op)}
-                            className="text-xs text-brand-600 hover:text-brand-800 font-medium">
-                            Editar
-                          </button>
+                          <div className="flex gap-2 justify-center">
+                            <button onClick={() => startEdit(op)}
+                              className="text-xs text-brand-600 hover:text-brand-800 font-medium">
+                              Editar
+                            </button>
+                            {!isSelf && (
+                              <button
+                                onClick={() => resetPassword(op)}
+                                disabled={resetting === op.id}
+                                title="Gerar nova senha temporária"
+                                className="text-xs text-amber-600 hover:text-amber-800 font-medium disabled:opacity-40">
+                                {resetting === op.id ? '…' : 'Senha ↺'}
+                              </button>
+                            )}
+                          </div>
                         </Td>
                       </>
                     )}

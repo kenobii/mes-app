@@ -105,4 +105,28 @@ router.put('/:id', adminMiddleware, (req, res) => {
   ).get(req.params.id));
 });
 
+router.post('/:id/reset-password', adminMiddleware, async (req, res) => {
+  const op = db.prepare('SELECT id, name, email FROM operators WHERE id = ?').get(req.params.id);
+  if (!op) return res.status(404).json({ error: 'Usuário não encontrado.' });
+
+  const tempPassword = generateTempPassword();
+  const passwordHash = bcrypt.hashSync(tempPassword, 10);
+
+  db.prepare(
+    'UPDATE operators SET password_hash = ?, password_change_required = 1 WHERE id = ?'
+  ).run(passwordHash, req.params.id);
+
+  let emailSent = false;
+  if (op.email) {
+    emailSent = await sendTempPasswordEmail(op.email, op.name, tempPassword).catch(err => {
+      console.error('Erro ao enviar email:', err.message);
+      return false;
+    });
+  }
+
+  // Se o email foi enviado, não retorna a senha no JSON.
+  // Se não foi enviado, retorna para o admin compartilhar manualmente.
+  res.json({ emailSent, tempPassword: emailSent ? null : tempPassword });
+});
+
 module.exports = router;
