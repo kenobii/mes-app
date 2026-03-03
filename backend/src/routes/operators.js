@@ -85,14 +85,21 @@ router.put('/:id', adminMiddleware, (req, res) => {
   if (newRole === 'user' && target?.role === 'admin' && Number(req.params.id) === req.user.id)
     return res.status(400).json({ error: 'Você não pode remover sua própria permissão de admin.' });
 
-  db.prepare(`
-    UPDATE operators SET
-      name        = COALESCE(?, name),
-      active      = COALESCE(?, active),
-      external_id = COALESCE(?, external_id),
-      role        = COALESCE(?, role)
-    WHERE id = ?
-  `).run(name ?? null, active ?? null, external_id ?? null, newRole, req.params.id);
+  // Constrói SET dinamicamente para suportar atualização opcional de email
+  const fields = [];
+  const params = [];
+
+  if (name !== undefined)        { fields.push('name = ?');        params.push(name.trim()); }
+  if ('email' in req.body)       { fields.push('email = ?');       params.push(req.body.email ? req.body.email.toLowerCase().trim() : null); }
+  if (active !== undefined)      { fields.push('active = ?');      params.push(active); }
+  if (external_id !== undefined) { fields.push('external_id = ?'); params.push(external_id); }
+  if (newRole !== null)          { fields.push('role = ?');        params.push(newRole); }
+
+  if (fields.length > 0) {
+    params.push(req.params.id);
+    db.prepare(`UPDATE operators SET ${fields.join(', ')} WHERE id = ?`).run(...params);
+  }
+
   res.json(db.prepare(
     'SELECT id, uuid, name, email, role, active FROM operators WHERE id = ?'
   ).get(req.params.id));

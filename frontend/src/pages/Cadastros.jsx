@@ -353,9 +353,11 @@ function TabMetas({ targets, stages, refetchTargets, onError }) {
 
 /* ─── aba Usuários ─────────────────────────────────────────── */
 function TabUsuarios({ operators, refetch, onError, me }) {
-  const [search, setSearch] = useState('');
-  const [form,   setForm]   = useState({ name: '', email: '' });
-  const [msg,    setMsg]    = useState(null);
+  const [search,  setSearch]  = useState('');
+  const [form,    setForm]    = useState({ name: '', email: '' });
+  const [msg,     setMsg]     = useState(null);
+  const [editId,  setEditId]  = useState(null);
+  const [editVal, setEditVal] = useState({});
 
   const filtered = useMemo(() =>
     (operators || []).filter(o => o.name.toLowerCase().includes(search.toLowerCase())),
@@ -369,6 +371,19 @@ function TabUsuarios({ operators, refetch, onError, me }) {
       const res = await api.post('/operators', form);
       if (res.emailSent) setMsg(`Senha enviada para ${form.email}`);
       setForm({ name: '', email: '' });
+      refetch();
+    } catch (e) { onError(e.message); }
+  }
+
+  function startEdit(op) {
+    setEditId(op.id);
+    setEditVal({ name: op.name, email: op.email || '' });
+  }
+
+  async function saveEdit(id) {
+    try {
+      await api.put(`/operators/${id}`, editVal);
+      setEditId(null);
       refetch();
     } catch (e) { onError(e.message); }
   }
@@ -407,7 +422,7 @@ function TabUsuarios({ operators, refetch, onError, me }) {
       {msg && <p className="text-xs text-green-600 font-medium">{msg}</p>}
       <p className="text-xs text-gray-400">
         Se o email for informado, uma senha temporária será enviada automaticamente.
-        Clique no badge de <strong>Perfil</strong> ou <strong>Ativo</strong> para alternar.
+        Clique no badge de <strong>Perfil</strong> ou <strong>Status</strong> para alternar.
       </p>
 
       <div className="flex items-center justify-between">
@@ -423,42 +438,77 @@ function TabUsuarios({ operators, refetch, onError, me }) {
               <Th>Email</Th>
               <Th className="w-28 text-center">Perfil</Th>
               <Th className="w-24 text-center">Status</Th>
+              <Th className="w-24 text-center">Ação</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0
-              ? <EmptyRow cols={4} />
+              ? <EmptyRow cols={5} />
               : filtered.map(op => {
                 const isSelf = op.id === me?.id;
                 return (
                   <tr key={op.id} className="hover:bg-gray-50 transition-colors">
-                    <Td className="font-medium text-gray-800">
-                      {op.name}
-                      {isSelf && <span className="ml-1 text-xs text-gray-400">(você)</span>}
-                    </Td>
-                    <Td className="text-gray-500">{op.email || <span className="text-gray-300">—</span>}</Td>
-                    <Td className="text-center">
-                      <button
-                        onClick={() => toggleRole(op)}
-                        disabled={isSelf}
-                        title={isSelf ? 'Não é possível alterar seu próprio perfil' : `Clique para tornar ${op.role === 'admin' ? 'Usuário' : 'Admin'}`}
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-semibold transition-colors
-                          ${op.role === 'admin' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
-                          ${isSelf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-                        {op.role === 'admin' ? 'Admin' : 'Usuário'}
-                      </button>
-                    </Td>
-                    <Td className="text-center">
-                      <button
-                        onClick={() => toggleActive(op)}
-                        disabled={isSelf}
-                        title={isSelf ? 'Não é possível alterar sua própria conta' : op.active ? 'Clique para desativar' : 'Clique para ativar'}
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-semibold transition-colors
-                          ${op.active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}
-                          ${isSelf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-                        {op.active ? 'Ativo' : 'Inativo'}
-                      </button>
-                    </Td>
+                    {editId === op.id ? (
+                      <>
+                        <Td>
+                          <input value={editVal.name}
+                            onChange={e => setEditVal(v => ({ ...v, name: e.target.value }))}
+                            className="border rounded px-2 py-1 text-sm w-full focus:outline-none focus:ring-1 focus:ring-brand-400" autoFocus />
+                        </Td>
+                        <Td>
+                          <input type="email" value={editVal.email}
+                            onChange={e => setEditVal(v => ({ ...v, email: e.target.value }))}
+                            placeholder="email@exemplo.com"
+                            className="border rounded px-2 py-1 text-sm w-full focus:outline-none focus:ring-1 focus:ring-brand-400" />
+                        </Td>
+                        <Td className="text-center text-gray-300">—</Td>
+                        <Td className="text-center text-gray-300">—</Td>
+                        <Td className="text-center">
+                          <div className="flex gap-1 justify-center">
+                            <button onClick={() => saveEdit(op.id)}
+                              className="bg-brand-600 text-white text-xs px-2 py-1 rounded hover:bg-brand-700">Salvar</button>
+                            <button onClick={() => setEditId(null)}
+                              className="text-gray-400 text-xs px-2 py-1 rounded hover:text-gray-600 border">Cancelar</button>
+                          </div>
+                        </Td>
+                      </>
+                    ) : (
+                      <>
+                        <Td className="font-medium text-gray-800">
+                          {op.name}
+                          {isSelf && <span className="ml-1 text-xs text-gray-400">(você)</span>}
+                        </Td>
+                        <Td className="text-gray-500">{op.email || <span className="text-gray-300">—</span>}</Td>
+                        <Td className="text-center">
+                          <button
+                            onClick={() => toggleRole(op)}
+                            disabled={isSelf}
+                            title={isSelf ? 'Não é possível alterar seu próprio perfil' : `Clique para tornar ${op.role === 'admin' ? 'Usuário' : 'Admin'}`}
+                            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold transition-colors
+                              ${op.role === 'admin' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}
+                              ${isSelf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                            {op.role === 'admin' ? 'Admin' : 'Usuário'}
+                          </button>
+                        </Td>
+                        <Td className="text-center">
+                          <button
+                            onClick={() => toggleActive(op)}
+                            disabled={isSelf}
+                            title={isSelf ? 'Não é possível alterar sua própria conta' : op.active ? 'Clique para desativar' : 'Clique para ativar'}
+                            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold transition-colors
+                              ${op.active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}
+                              ${isSelf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                            {op.active ? 'Ativo' : 'Inativo'}
+                          </button>
+                        </Td>
+                        <Td className="text-center">
+                          <button onClick={() => startEdit(op)}
+                            className="text-xs text-brand-600 hover:text-brand-800 font-medium">
+                            Editar
+                          </button>
+                        </Td>
+                      </>
+                    )}
                   </tr>
                 );
               })
