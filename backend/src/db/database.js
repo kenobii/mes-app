@@ -1,0 +1,50 @@
+// Usa o módulo SQLite nativo do Node.js (disponível a partir do Node 22.5+)
+// Não requer compilação de módulos nativos.
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const fs   = require('fs');
+
+const SEED_DB     = path.join(__dirname, '..', '..', 'data', 'mes.db');
+const DB_PATH     = process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : SEED_DB;
+const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+
+// Na primeira execução com volume externo, copia o banco local como ponto de partida
+if (process.env.DB_PATH && !fs.existsSync(DB_PATH) && fs.existsSync(SEED_DB)) {
+  fs.copyFileSync(SEED_DB, DB_PATH);
+  console.log('Banco de dados iniciado a partir da cópia local.');
+}
+
+const db = new DatabaseSync(DB_PATH);
+
+// Aplica o schema (idempotente via CREATE TABLE IF NOT EXISTS)
+const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+db.exec(schema);
+
+// Migração de auth — idempotente
+const authCols = [
+  "ALTER TABLE operators ADD COLUMN email TEXT",
+  "ALTER TABLE operators ADD COLUMN password_hash TEXT",
+  "ALTER TABLE operators ADD COLUMN password_change_required INTEGER DEFAULT 1",
+];
+for (const sql of authCols) {
+  try { db.exec(sql); } catch (_) { /* coluna já existe */ }
+}
+
+// Migração de role — idempotente
+try { db.exec("ALTER TABLE operators ADD COLUMN role TEXT DEFAULT 'user'"); } catch (_) {}
+db.prepare("UPDATE operators SET role = 'admin' WHERE name = 'Ygor' AND (role IS NULL OR role != 'admin')").run();
+
+// Migração de metas — idempotente
+db.exec(`
+  CREATE TABLE IF NOT EXISTS stage_targets (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    stage_id       INTEGER NOT NULL REFERENCES stages(id),
+    target_minutes REAL    NOT NULL,
+    created_at     TEXT    DEFAULT (datetime('now')),
+    UNIQUE(stage_id)
+  )
+`);
+
+module.exports = db;
