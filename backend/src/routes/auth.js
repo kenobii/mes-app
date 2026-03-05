@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
-const db      = require('../db/database');
+const operatorRepository = require('../repositories/operatorRepository');
 const { authMiddleware, SECRET } = require('../middleware/auth');
 
 const router = Router();
@@ -12,7 +12,7 @@ router.post('/login', (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: 'Email e senha são obrigatórios.' });
 
-  const user = db.prepare('SELECT * FROM operators WHERE email = ?').get(email.toLowerCase().trim());
+  const user = operatorRepository.findByEmail(email.toLowerCase().trim());
   if (!user || !user.password_hash)
     return res.status(401).json({ error: 'Credenciais inválidas.' });
 
@@ -34,6 +34,16 @@ router.post('/login', (req, res) => {
   });
 });
 
+// GET /api/auth/guest-token  (público)
+router.get('/guest-token', (req, res) => {
+  const token = jwt.sign(
+    { id: 0, name: 'Convidado', role: 'guest' },
+    SECRET,
+    { expiresIn: '24h' }
+  );
+  res.json({ token, user: { id: 0, name: 'Convidado', role: 'guest' } });
+});
+
 // POST /api/auth/change-password  (autenticado)
 router.post('/change-password', authMiddleware, (req, res) => {
   const { password } = req.body;
@@ -41,9 +51,7 @@ router.post('/change-password', authMiddleware, (req, res) => {
     return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres.' });
 
   const hash = bcrypt.hashSync(password, 10);
-  db.prepare(`
-    UPDATE operators SET password_hash = ?, password_change_required = 0 WHERE id = ?
-  `).run(hash, req.user.id);
+  operatorRepository.changePassword(req.user.id, hash);
 
   res.json({ ok: true });
 });

@@ -22,8 +22,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  const isGuest = user?.role === 'guest';
+
   return (
-    <AuthContext.Provider value={{ token, user, login, logout }}>
+    <AuthContext.Provider value={{ token, user, login, logout, isGuest }}>
       {children}
     </AuthContext.Provider>
   );

@@ -13,7 +13,7 @@ const navBase = [
   { to: '/',           label: 'Dashboard'  },
   { to: '/analysis',   label: 'Por Etapa'  },
   { to: '/orders',     label: 'Ordens'     },
-  { to: '/orders/new', label: 'Nova Ordem' },
+  { to: '/orders/new', label: 'Nova Ordem', requiresAuth: true },
 ];
 
 function ProtectedRoute({ children }) {
@@ -30,9 +30,10 @@ function AdminRoute({ children }) {
 }
 
 function AppShell() {
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, isGuest } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const nav = isAdmin ? [...navBase, { to: '/cadastros', label: 'Cadastros' }] : navBase;
+  const navFiltered = navBase.filter(n => !n.requiresAuth || !isGuest);
+  const nav = isAdmin ? [...navFiltered, { to: '/cadastros', label: 'Cadastros' }] : navFiltered;
 
   if (!token) {
     return (
@@ -66,11 +67,23 @@ function AppShell() {
             ))}
           </nav>
           <div className="flex items-center gap-3 text-sm shrink-0">
-            <span className="text-brand-200 text-xs hidden sm:inline">{user?.name}</span>
-            <button onClick={logout}
-              className="hover:bg-brand-600 px-3 py-1 rounded text-xs">
-              Sair
-            </button>
+            {isGuest ? (
+              <>
+                <span className="text-brand-300 text-xs hidden sm:inline bg-brand-800 px-2 py-0.5 rounded">Convidado</span>
+                <button onClick={logout}
+                  className="hover:bg-brand-600 px-3 py-1 rounded text-xs">
+                  Fazer login
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-brand-200 text-xs hidden sm:inline">{user?.name}</span>
+                <button onClick={logout}
+                  className="hover:bg-brand-600 px-3 py-1 rounded text-xs">
+                  Sair
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>

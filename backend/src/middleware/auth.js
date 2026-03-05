@@ -21,4 +21,10 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, adminMiddleware, SECRET };
+function requireNonGuest(req, res, next) {
+  if (req.user?.role === 'guest')
+    return res.status(403).json({ error: 'Convidados não podem realizar esta ação.' });
+  next();
+}
+
+module.exports = { authMiddleware, adminMiddleware, requireNonGuest, SECRET };

@@ -30,6 +30,20 @@ export default function Login() {
     }
   }
 
+  async function handleGuest() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get('/auth/guest-token');
+      login(res.token, res.user);
+      navigate('/');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-sm space-y-6">
@@ -70,6 +84,17 @@ export default function Login() {
             {loading ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
+
+        <div className="relative flex items-center gap-2">
+          <div className="flex-1 border-t border-gray-200" />
+          <span className="text-xs text-gray-400">ou</span>
+          <div className="flex-1 border-t border-gray-200" />
+        </div>
+
+        <button onClick={handleGuest} disabled={loading}
+          className="w-full border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-600 font-medium py-2.5 rounded-lg text-sm transition-colors">
+          Entrar como Convidado
+        </button>
       </div>
     </div>
   );
