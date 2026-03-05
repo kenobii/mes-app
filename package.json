@@ -5,7 +5,7 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
+    "build": "npm install --prefix backend && npm install --include=dev --prefix frontend && npm run build --prefix frontend",
     "start": "node --experimental-sqlite backend/src/app.js"
   }
 }
