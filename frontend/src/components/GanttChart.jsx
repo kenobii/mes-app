@@ -1,9 +1,5 @@
 import { useMemo } from 'react';
-
-const COLORS = [
-  '#16a34a','#2563eb','#d97706','#7c3aed','#db2777',
-  '#0891b2','#65a30d','#c2410c','#0d9488','#7e22ce',
-];
+import { STAGE_COLORS } from '../utils/colors';
 
 export default function GanttChart({ data }) {
   const last3 = useMemo(() => {
@@ -19,7 +15,7 @@ export default function GanttChart({ data }) {
     const colors = {};
     let ci = 0;
     for (const r of last3) {
-      if (!colors[r.stage]) colors[r.stage] = COLORS[ci++ % COLORS.length];
+      if (!colors[r.stage]) colors[r.stage] = STAGE_COLORS[ci++ % STAGE_COLORS.length];
     }
     return colors;
   }, [last3]);

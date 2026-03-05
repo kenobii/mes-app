@@ -4,15 +4,10 @@ import {
   ResponsiveContainer, Cell, ErrorBar,
 } from 'recharts';
 import { useApi } from '../hooks/useApi';
+import { STAGE_COLORS } from '../utils/colors';
 
 const today    = new Date().toISOString().slice(0, 10);
 const yearAgo  = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
-
-const STAGE_COLORS = [
-  '#16a34a','#2563eb','#d97706','#7c3aed','#db2777',
-  '#0891b2','#65a30d','#c2410c','#0d9488','#7e22ce',
-  '#ea580c','#0284c7','#65a30d','#9333ea','#be123c',
-];
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;

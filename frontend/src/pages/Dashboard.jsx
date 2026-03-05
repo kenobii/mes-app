@@ -6,12 +6,7 @@ import {
 import { useApi } from '../hooks/useApi';
 import GanttChart from '../components/GanttChart';
 import { fmtDateShort } from '../utils/format';
-
-const STAGE_COLORS = [
-  '#16a34a','#2563eb','#d97706','#dc2626','#7c3aed',
-  '#0891b2','#be185d','#065f46','#1d4ed8','#b45309',
-  '#9333ea','#0f766e','#c2410c','#4338ca','#0369a1',
-];
+import { STAGE_COLORS } from '../utils/colors';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
