@@ -6,7 +6,8 @@ function buildWhere({ date_from, date_to, operator_id }) {
   if (date_from)   { clauses.push(`o.production_date >= ?`); params.push(date_from); }
   if (date_to)     { clauses.push(`o.production_date <= ?`); params.push(date_to); }
   if (operator_id) { clauses.push(`o.operator_id = ?`);      params.push(operator_id); }
-  const sql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  // Sempre retorna WHERE 1=1 para que cláusulas AND adicionais sejam sempre válidas
+  const sql = `WHERE 1=1${clauses.length ? ' AND ' + clauses.join(' AND ') : ''}`;
   return { sql, params };
 }
 
@@ -113,7 +114,9 @@ const dashboardRepository = {
 
   getByProductStage: (filters, product_id) => {
     const where = buildWhere(filters);
-    const productClause = product_id ? `AND o.product_id = ${Number(product_id)}` : '';
+    const params = [...where.params];
+    const productSql = product_id ? ' AND o.product_id = ?' : '';
+    if (product_id) params.push(Number(product_id));
 
     const rows = db.prepare(`
       SELECT
@@ -135,12 +138,12 @@ const dashboardRepository = {
       JOIN stages             st ON st.id = s.stage_id
       JOIN production_orders  o  ON o.id  = s.order_id
       JOIN products           p  ON p.id  = o.product_id
-      ${where.sql} ${productClause}
+      ${where.sql}${productSql}
         AND s.net_time_minutes IS NOT NULL
         AND s.net_time_minutes > 0
       GROUP BY p.id, st.id
       ORDER BY p.name, avg_net_minutes DESC
-    `).all(...where.params);
+    `).all(...params);
 
     const byProduct = {};
     for (const row of rows) {

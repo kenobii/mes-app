@@ -6,7 +6,7 @@ export function useApi(path, deps = []) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     if (!path) return;
     setLoading(true);
     setError(null);
@@ -21,7 +21,7 @@ export function useApi(path, deps = []) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, ...deps]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { load(); }, [load]);
 
-  return { data, loading, error, refetch: fetch };
+  return { data, loading, error, refetch: load };
 }

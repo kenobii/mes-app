@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-50 text-gray-900 font-sans;
+@layer base {
+  :root {
+    --radius: 0.625rem;
+    --background: 220 13% 10%;
+    --foreground: 220 10% 94%;
+    --card: 220 12% 14%;
+    --card-foreground: 220 10% 94%;
+    --popover: 220 12% 14%;
+    --popover-foreground: 220 10% 94%;
+    --primary: 142 60% 55%;
+    --primary-foreground: 142 40% 8%;
+    --secondary: 220 12% 18%;
+    --secondary-foreground: 220 10% 85%;
+    --muted: 220 12% 17%;
+    --muted-foreground: 220 8% 58%;
+    --accent: 220 12% 18%;
+    --accent-foreground: 220 10% 94%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 12% 20%;
+    --input: 220 12% 20%;
+    --ring: 142 60% 55%;
+    --sidebar: 220 13% 9%;
+    --sidebar-foreground: 220 10% 88%;
+    --sidebar-primary: 142 60% 55%;
+    --sidebar-primary-foreground: 142 40% 8%;
+    --sidebar-accent: 220 12% 16%;
+    --sidebar-accent-foreground: 220 10% 94%;
+    --sidebar-border: 220 12% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
 }

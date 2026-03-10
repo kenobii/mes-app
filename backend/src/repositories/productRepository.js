@@ -15,7 +15,7 @@ const productRepository = {
   create: ({ name, unit = 'KG', external_id }) => {
     const result = db.prepare(`
       INSERT INTO products (name, unit, external_id) VALUES (?, ?, ?)
-    `).run(name.trim().toUpperCase(), unit, external_id ?? null);
+    `).run(name.trim(), unit, external_id ?? null);
     return db.prepare(`SELECT * FROM products WHERE id = ?`).get(result.lastInsertRowid);
   },
 

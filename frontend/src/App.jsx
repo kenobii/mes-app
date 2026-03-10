@@ -8,12 +8,25 @@ import Cadastros       from './pages/Cadastros';
 import ProductAnalysis from './pages/ProductAnalysis';
 import Login           from './pages/Login';
 import ChangePassword  from './pages/ChangePassword';
+import { Separator }  from '@/components/ui/separator';
+import { Badge }      from '@/components/ui/badge';
+import { Button }     from '@/components/ui/button';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  PlusCircle,
+  BarChart2,
+  Settings,
+  LogOut,
+  LogIn,
+  ChefHat,
+} from 'lucide-react';
 
 const navBase = [
-  { to: '/',           label: 'Dashboard'  },
-  { to: '/analysis',   label: 'Por Etapa'  },
-  { to: '/orders',     label: 'Ordens'     },
-  { to: '/orders/new', label: 'Nova Ordem', requiresAuth: true },
+  { to: '/',           label: 'Dashboard',  icon: LayoutDashboard },
+  { to: '/analysis',   label: 'Por Etapa',  icon: BarChart2 },
+  { to: '/orders',     label: 'Ordens',     icon: ClipboardList },
+  { to: '/orders/new', label: 'Nova Ordem', icon: PlusCircle, requiresAuth: true },
 ];
 
 function ProtectedRoute({ children }) {
@@ -29,11 +42,74 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function Sidebar({ nav, user, isGuest, logout }) {
+  return (
+    <aside className="w-60 shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border min-h-screen">
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+          <ChefHat className="h-4 w-4 text-primary-foreground" />
+        </div>
+        <span className="font-semibold text-sm text-sidebar-foreground">Dados Operacionais</span>
+      </div>
+
+      <Separator className="bg-sidebar-border" />
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+        {nav.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === '/'}
+            className={({ isActive }) =>
+              isActive
+                ? 'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium bg-sidebar-accent text-primary'
+                : 'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors'
+            }
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <Separator className="bg-sidebar-border" />
+
+      {/* User footer */}
+      <div className="px-3 py-4 flex flex-col gap-2">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-semibold shrink-0">
+            {isGuest ? 'G' : (user?.name?.[0] ?? '?').toUpperCase()}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-medium text-sidebar-foreground truncate">
+              {isGuest ? 'Convidado' : user?.name}
+            </span>
+            {isGuest && <Badge variant="outline" className="text-[10px] w-fit px-1.5 py-0">Somente leitura</Badge>}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+        >
+          {isGuest ? <LogIn className="h-4 w-4" /> : <LogOut className="h-4 w-4" />}
+          {isGuest ? 'Fazer login' : 'Sair'}
+        </Button>
+      </div>
+    </aside>
+  );
+}
+
 function AppShell() {
   const { token, user, logout, isGuest } = useAuth();
   const isAdmin = user?.role === 'admin';
   const navFiltered = navBase.filter(n => !n.requiresAuth || !isGuest);
-  const nav = isAdmin ? [...navFiltered, { to: '/cadastros', label: 'Cadastros' }] : navFiltered;
+  const nav = isAdmin
+    ? [...navFiltered, { to: '/cadastros', label: 'Cadastros', icon: Settings }]
+    : navFiltered;
 
   if (!token) {
     return (
@@ -46,59 +122,22 @@ function AppShell() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-brand-700 text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <span className="font-bold text-lg tracking-wide shrink-0">Dados Operacionais</span>
-          <nav className="flex flex-wrap gap-1 text-sm flex-1">
-            {nav.map(n => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                end={n.to === '/'}
-                className={({ isActive }) =>
-                  isActive
-                    ? 'bg-brand-900 px-3 py-1 rounded font-semibold whitespace-nowrap'
-                    : 'hover:bg-brand-600 px-3 py-1 rounded whitespace-nowrap'
-                }
-              >
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3 text-sm shrink-0">
-            {isGuest ? (
-              <>
-                <span className="text-brand-300 text-xs hidden sm:inline bg-brand-800 px-2 py-0.5 rounded">Convidado</span>
-                <button onClick={logout}
-                  className="hover:bg-brand-600 px-3 py-1 rounded text-xs">
-                  Fazer login
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-brand-200 text-xs hidden sm:inline">{user?.name}</span>
-                <button onClick={logout}
-                  className="hover:bg-brand-600 px-3 py-1 rounded text-xs">
-                  Sair
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen bg-background">
+      <Sidebar nav={nav} user={user} isGuest={isGuest} logout={logout} />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6">
-        <Routes>
-          <Route path="/"                element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/analysis"        element={<ProtectedRoute><ProductAnalysis /></ProtectedRoute>} />
-          <Route path="/orders"          element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-          <Route path="/orders/new"      element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
-          <Route path="/orders/:id"      element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
-          <Route path="/cadastros"       element={<AdminRoute><Cadastros /></AdminRoute>} />
-          <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="*"                element={<Navigate to="/" replace />} />
-        </Routes>
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <Routes>
+            <Route path="/"                element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/analysis"        element={<ProtectedRoute><ProductAnalysis /></ProtectedRoute>} />
+            <Route path="/orders"          element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/orders/new"      element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
+            <Route path="/orders/:id"      element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+            <Route path="/cadastros"       element={<AdminRoute><Cadastros /></AdminRoute>} />
+            <Route path="/change-password" element={<ChangePassword />} />
+            <Route path="*"                element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </main>
     </div>
   );

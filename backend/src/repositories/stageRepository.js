@@ -15,7 +15,7 @@ const stageRepository = {
   create: ({ name, category, external_id }) => {
     const result = db.prepare(`
       INSERT INTO stages (name, category, external_id) VALUES (?, ?, ?)
-    `).run(name.trim().toUpperCase(), category ?? null, external_id ?? null);
+    `).run(name.trim(), category ?? null, external_id ?? null);
     return db.prepare(`SELECT * FROM stages WHERE id = ?`).get(result.lastInsertRowid);
   },
 

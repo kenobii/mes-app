@@ -2,13 +2,19 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api }    from '../api/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input }  from '@/components/ui/input';
+import { Label }  from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { ChefHat, LogIn } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [form,  setForm]  = useState({ email: '', password: '' });
-  const [error, setError] = useState(null);
+  const [form,    setForm]    = useState({ email: '', password: '' });
+  const [error,   setError]   = useState(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
@@ -45,57 +51,59 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-gray-800">Dados Operacionais</h1>
-          <p className="text-sm text-gray-400 mt-1">Acesso ao sistema</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center text-center pb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary mb-3">
+            <ChefHat className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <CardTitle className="text-base font-semibold text-foreground">Dados Operacionais</CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">Acesso ao sistema</p>
+        </CardHeader>
 
-        {error && (
-          <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2 text-center">
-            {error}
-          </p>
-        )}
+        <CardContent className="space-y-4">
+          {error && (
+            <p className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md px-3 py-2 text-center">
+              {error}
+            </p>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-gray-600">Email</span>
-            <input
-              type="email" required autoFocus
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="mt-1 block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email" type="email" required autoFocus
+                value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              />
+            </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Senha</span>
-            <input
-              type="password" required
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="mt-1 block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password" type="password" required
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              />
+            </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
-        </form>
+            <Button type="submit" disabled={loading} className="w-full mt-1">
+              <LogIn className="h-4 w-4" />
+              {loading ? 'Entrando…' : 'Entrar'}
+            </Button>
+          </form>
 
-        <div className="relative flex items-center gap-2">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-xs text-gray-400">ou</span>
-          <div className="flex-1 border-t border-gray-200" />
-        </div>
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">ou</span>
+            <Separator className="flex-1" />
+          </div>
 
-        <button onClick={handleGuest} disabled={loading}
-          className="w-full border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-600 font-medium py-2.5 rounded-lg text-sm transition-colors">
-          Entrar como Convidado
-        </button>
-      </div>
+          <Button variant="outline" onClick={handleGuest} disabled={loading} className="w-full">
+            Entrar como Convidado
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
