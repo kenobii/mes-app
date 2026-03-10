@@ -3,17 +3,22 @@ import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
 import { fmtDate } from '../utils/format';
-import EditModal    from '../components/orders/EditModal';
+import EditModal     from '../components/orders/EditModal';
 import DeleteConfirm from '../components/orders/DeleteConfirm';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button }  from '@/components/ui/button';
+import { Input }   from '@/components/ui/input';
+import { Badge }   from '@/components/ui/badge';
+import { Download, Plus } from 'lucide-react';
 
 const today    = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 
-const statusColor = {
-  'Concluído':    'bg-green-100 text-green-800',
-  'Em Andamento': 'bg-blue-100 text-blue-800',
-  'Pendente':     'bg-yellow-100 text-yellow-800',
-  'Cancelado':    'bg-red-100 text-red-800',
+const statusVariant = {
+  'Concluído':    'success',
+  'Em Andamento': 'default',
+  'Pendente':     'warning',
+  'Cancelado':    'destructive',
 };
 
 const COLUMNS = [
@@ -44,12 +49,8 @@ function applySort(arr, key, dir) {
 function exportCSV(rows) {
   const headers = ['Data','Produto','Usuário','Planejado','Unidade','Produzido','Eficiência (%)','Tempo Líq. (min)','Status'];
   const lines = rows.map(o => [
-    o.production_date,
-    o.product_name,
-    o.operator_name || '',
-    o.planned_qty   ?? '',
-    o.unit          || '',
-    o.produced_qty  ?? '',
+    o.production_date, o.product_name, o.operator_name || '',
+    o.planned_qty ?? '', o.unit || '', o.produced_qty ?? '',
     o.efficiency_pct ?? '',
     o.total_net_minutes ? Math.round(o.total_net_minutes) : '',
     o.status,
@@ -61,7 +62,6 @@ function exportCSV(rows) {
   a.href = url; a.download = 'ordens.csv'; a.click();
   URL.revokeObjectURL(url);
 }
-
 
 export default function Orders() {
   const { isGuest } = useAuth();
@@ -90,108 +90,115 @@ export default function Orders() {
 
   return (
     <div className="space-y-4">
-      {editing  && <EditModal   order={editing}  onClose={() => setEditing(null)}  onSaved={refetch} />}
+      {editing  && <EditModal    order={editing}  onClose={() => setEditing(null)}  onSaved={refetch} />}
       {deleting && <DeleteConfirm order={deleting} onClose={() => setDeleting(null)} onDeleted={refetch} />}
 
-      <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl shadow-sm p-4">
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-          className="border rounded px-2 py-1 text-sm" />
-        <span className="text-gray-400">→</span>
-        <input type="date" value={to} onChange={e => setTo(e.target.value)}
-          className="border rounded px-2 py-1 text-sm" />
-        <input
-          placeholder="Buscar produto…"
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="border rounded px-3 py-1 text-sm flex-1 min-w-[160px]"
-        />
-        <button onClick={() => exportCSV(rows)} disabled={rows.length === 0}
-          className="border border-gray-300 hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded text-sm disabled:opacity-40">
-          Exportar CSV
-        </button>
-        {!isGuest && (
-          <Link to="/orders/new"
-            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-1.5 rounded text-sm font-medium">
-            + Nova Ordem
-          </Link>
-        )}
-      </div>
+      {/* Filtros */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-36" />
+            <span className="text-muted-foreground">→</span>
+            <Input type="date" value={to}   onChange={e => setTo(e.target.value)}   className="w-36" />
+            <Input
+              placeholder="Buscar produto…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="flex-1 min-w-[160px]"
+            />
+            <Button variant="outline" size="sm" onClick={() => exportCSV(rows)} disabled={rows.length === 0}>
+              <Download className="h-4 w-4" /> Exportar CSV
+            </Button>
+            {!isGuest && (
+              <Button size="sm" asChild>
+                <Link to="/orders/new"><Plus className="h-4 w-4" /> Nova Ordem</Link>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Tabela */}
       {loading ? (
-        <p className="text-sm text-gray-400 text-center py-8">Carregando…</p>
+        <p className="text-sm text-muted-foreground text-center py-8">Carregando…</p>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-              <tr>
-                {COLUMNS.map(col => (
-                  <th
-                    key={col.key ?? '__actions'}
-                    onClick={() => handleSort(col.key)}
-                    className={`px-4 py-3 text-left font-medium ${col.key ? 'cursor-pointer select-none hover:bg-gray-100 hover:text-gray-800' : ''}`}
-                  >
-                    {col.label}
-                    {col.key && (
-                      <span className="ml-1">
-                        {sort.key === col.key
-                          ? sort.dir === 'asc' ? '↑' : '↓'
-                          : <span className="opacity-20">↕</span>
-                        }
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {rows.map(o => (
-                <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2 text-gray-500">{fmtDate(o.production_date)}</td>
-                  <td className="px-4 py-2 font-medium">{o.product_name}</td>
-                  <td className="px-4 py-2 text-gray-500">{o.operator_name || '—'}</td>
-                  <td className="px-4 py-2">{o.planned_qty  != null ? `${o.planned_qty} ${o.unit}`  : '—'}</td>
-                  <td className="px-4 py-2">{o.produced_qty != null ? `${o.produced_qty} ${o.unit}` : '—'}</td>
-                  <td className="px-4 py-2">
-                    {o.efficiency_pct != null ? (
-                      <span className={`font-semibold ${
-                        o.efficiency_pct >= 100 ? 'text-green-600' :
-                        o.efficiency_pct >= 80  ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{o.efficiency_pct}%</span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-500">
-                    {o.total_net_minutes ? `${Math.round(o.total_net_minutes)} min` : '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[o.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {o.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <Link to={`/orders/${o.id}`}
-                      className="text-xs text-gray-500 hover:text-gray-800 hover:underline mr-2">
-                      Ver
-                    </Link>
-                    {!isGuest && (
-                      <>
-                        <button onClick={() => setEditing(o)}
-                          className="text-xs text-brand-600 hover:text-brand-800 hover:underline mr-2">
-                          Editar
-                        </button>
-                        <button onClick={() => setDeleting(o)}
-                          className="text-xs text-red-400 hover:text-red-600 hover:underline">
-                          Excluir
-                        </button>
-                      </>
-                    )}
-                  </td>
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  {COLUMNS.map(col => (
+                    <th
+                      key={col.key ?? '__actions'}
+                      onClick={() => handleSort(col.key)}
+                      className={`px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide
+                        ${col.key ? 'cursor-pointer select-none hover:text-foreground' : ''}`}
+                    >
+                      {col.label}
+                      {col.key && (
+                        <span className="ml-1">
+                          {sort.key === col.key
+                            ? sort.dir === 'asc' ? '↑' : '↓'
+                            : <span className="opacity-20">↕</span>
+                          }
+                        </span>
+                      )}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">Nenhum registro encontrado.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map(o => (
+                  <tr key={o.id} className="hover:bg-muted/40 transition-colors">
+                    <td className="px-4 py-2.5 text-muted-foreground">{fmtDate(o.production_date)}</td>
+                    <td className="px-4 py-2.5 font-medium text-foreground">{o.product_name}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{o.operator_name || '—'}</td>
+                    <td className="px-4 py-2.5">{o.planned_qty  != null ? `${o.planned_qty} ${o.unit}`  : '—'}</td>
+                    <td className="px-4 py-2.5">{o.produced_qty != null ? `${o.produced_qty} ${o.unit}` : '—'}</td>
+                    <td className="px-4 py-2.5">
+                      {o.efficiency_pct != null ? (
+                        <span className={`font-semibold ${
+                          o.efficiency_pct >= 100 ? 'text-primary' :
+                          o.efficiency_pct >= 80  ? 'text-yellow-400' : 'text-destructive'
+                        }`}>{o.efficiency_pct}%</span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {o.total_net_minutes ? `${Math.round(o.total_net_minutes)} min` : '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge variant={statusVariant[o.status] ?? 'outline'}>{o.status}</Badge>
+                    </td>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <Link to={`/orders/${o.id}`}
+                        className="text-xs text-muted-foreground hover:text-foreground hover:underline mr-3">
+                        Ver
+                      </Link>
+                      {!isGuest && (
+                        <>
+                          <button onClick={() => setEditing(o)}
+                            className="text-xs text-primary hover:text-primary/80 hover:underline mr-3">
+                            Editar
+                          </button>
+                          <button onClick={() => setDeleting(o)}
+                            className="text-xs text-destructive hover:text-destructive/80 hover:underline">
+                            Excluir
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                      Nenhum registro encontrado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );

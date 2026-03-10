@@ -1,15 +1,37 @@
 import { useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend, ReferenceLine,
+  LineChart, Line, Legend,
 } from 'recharts';
 import { useApi } from '../hooks/useApi';
 import GanttChart from '../components/GanttChart';
 import { fmtDateShort } from '../utils/format';
 import { STAGE_COLORS } from '../utils/colors';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
-const today = new Date().toISOString().slice(0, 10);
+const today    = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+
+const CHART_BG    = 'transparent';
+const GRID_COLOR  = 'hsl(220 12% 22%)';
+const TEXT_COLOR  = 'hsl(220 8% 58%)';
+const GREEN       = 'hsl(142 60% 55%)';
+const BLUE        = 'hsl(213 94% 68%)';
+const AMBER       = 'hsl(38 92% 55%)';
+
+function ChartCard({ title, subtitle, children, className }) {
+  return (
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
 
 export default function Dashboard() {
   const [from,       setFrom]       = useState(monthAgo);
@@ -30,7 +52,6 @@ export default function Dashboard() {
   const { data: pauses         } = useApi(`/dashboard/pauses${qs}`,            [from, to, operatorId]);
   const { data: stageTargets   } = useApi('/stage-targets');
 
-  // Etapas que possuem meta cadastrada e dados reais
   const targetCompareData = useMemo(() => {
     if (!byStage || !stageTargets?.length) return [];
     return (stageTargets || [])
@@ -62,7 +83,6 @@ export default function Dashboard() {
     .slice(0, 12)
     .map(r => ({ name: r.product, eficiencia: r.avg_efficiency_pct }));
 
-  // Etapas únicas (não-legado) para o gráfico empilhado
   const allStages = useMemo(() => {
     if (!byProductStage) return [];
     const seen = new Set();
@@ -72,7 +92,6 @@ export default function Dashboard() {
     return [...seen];
   }, [byProductStage]);
 
-  // Linha por produto — médias
   const productStageData = useMemo(() => {
     if (!byProductStage) return [];
     return byProductStage.map(p => {
@@ -83,7 +102,6 @@ export default function Dashboard() {
     });
   }, [byProductStage]);
 
-  // Linha por produto — totais
   const productStageTotalData = useMemo(() => {
     if (!byProductStage) return [];
     return byProductStage.map(p => {
@@ -97,19 +115,24 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-4 bg-white rounded-xl shadow-sm p-4">
-        <span className="text-sm font-medium text-gray-600">Período:</span>
-        <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-          className="border rounded px-2 py-1 text-sm" />
-        <span className="text-gray-400">→</span>
-        <input type="date" value={to}   onChange={e => setTo(e.target.value)}
-          className="border rounded px-2 py-1 text-sm" />
-        <select value={operatorId} onChange={e => setOperatorId(e.target.value)}
-          className="border rounded px-2 py-1 text-sm">
-          <option value="">Todos os usuários</option>
-          {(operators || []).map(op => <option key={op.id} value={op.id}>{op.name}</option>)}
-        </select>
-      </div>
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-muted-foreground">Período:</span>
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-36" />
+            <span className="text-muted-foreground">→</span>
+            <Input type="date" value={to}   onChange={e => setTo(e.target.value)}   className="w-36" />
+            <select
+              value={operatorId}
+              onChange={e => setOperatorId(e.target.value)}
+              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Todos os usuários</option>
+              {(operators || []).map(op => <option key={op.id} value={op.id}>{op.name}</option>)}
+            </select>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPIs */}
       {summary && (
@@ -123,184 +146,155 @@ export default function Dashboard() {
               prev: summaryPrev?.avg_efficiency_pct, raw: summary.avg_efficiency_pct,
               highlight: summary.avg_efficiency_pct >= 100 },
           ].map(kpi => {
-            const cur  = kpi.raw  ?? kpi.value;
-            const prev = kpi.prev ?? null;
+            const cur   = kpi.raw  ?? kpi.value;
+            const prev  = kpi.prev ?? null;
             const delta = (prev != null && cur != null && typeof cur === 'number' && typeof prev === 'number' && prev !== 0)
               ? Math.round((cur - prev) / prev * 100)
               : null;
             return (
-              <div key={kpi.label}
-                className={`bg-white rounded-xl shadow-sm p-4 flex flex-col gap-1
-                  ${kpi.highlight ? 'border-l-4 border-brand-500' : ''}`}>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">{kpi.label}</span>
-                <span className="text-2xl font-bold text-gray-800">{kpi.value}</span>
-                {delta !== null && (
-                  <span className={`text-xs font-medium ${delta >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% vs período anterior
-                  </span>
-                )}
-              </div>
+              <Card key={kpi.label} className={cn(kpi.highlight && 'border-l-4 border-l-primary')}>
+                <CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{kpi.value}</p>
+                  {delta !== null && (
+                    <p className={cn('text-xs font-medium mt-1', delta >= 0 ? 'text-primary' : 'text-destructive')}>
+                      {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}% vs período anterior
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* Gráficos */}
+      {/* Gráficos — linha 1 */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Tempo por etapa */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Tempo Total por Etapa (min)</h2>
+        <ChartCard title="Tempo Total por Etapa (min)">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={stageData} layout="vertical"
-              margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={v => [`${v} min`]} />
-              <Bar dataKey="minutos" fill="#16a34a" radius={[0, 4, 4, 0]} />
+            <BarChart data={stageData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID_COLOR} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={v => [`${v} min`]} />
+              <Bar dataKey="minutos" fill={GREEN} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
 
-        {/* Eficiência por produto */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Eficiência por Produto (%)</h2>
+        <ChartCard title="Eficiência por Produto (%)">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={effData} layout="vertical"
-              margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" domain={[0, 150]} tick={{ fontSize: 11 }}
-                tickFormatter={v => `${v}%`} />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={v => [`${v}%`]} />
-              <Bar dataKey="eficiencia" fill="#2563eb" radius={[0, 4, 4, 0]} />
+            <BarChart data={effData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID_COLOR} />
+              <XAxis type="number" domain={[0, 150]} tick={{ fontSize: 11, fill: TEXT_COLOR }} tickFormatter={v => `${v}%`} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: TEXT_COLOR }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={v => [`${v}%`]} />
+              <Bar dataKey="eficiencia" fill={BLUE} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       </div>
 
-      {/* Análise de pausas */}
+      {/* Pausas */}
       {pauseData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Pausas por Motivo (min total)</h2>
+        <ChartCard title="Pausas por Motivo (min total)">
           <ResponsiveContainer width="100%" height={Math.max(200, pauseData.length * 32)}>
-            <BarChart data={pauseData} layout="vertical"
-              margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v, name) => [name === 'minutos' ? `${v} min` : v, name === 'minutos' ? 'Total' : 'Ocorrências']} />
-              <Bar dataKey="minutos" fill="#f59e0b" radius={[0, 4, 4, 0]}
-                label={{ position: 'right', fontSize: 10, fill: '#6b7280', formatter: v => `${v}min` }} />
+            <BarChart data={pauseData} layout="vertical" margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID_COLOR} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <YAxis type="category" dataKey="name" width={160} tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={(v, name) => [name === 'minutos' ? `${v} min` : v, name === 'minutos' ? 'Total' : 'Ocorrências']} />
+              <Bar dataKey="minutos" fill={AMBER} radius={[0, 4, 4, 0]}
+                label={{ position: 'right', fontSize: 10, fill: TEXT_COLOR, formatter: v => `${v}min` }} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       )}
 
       {/* Etapas por produto — média */}
       {productStageData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
-            Tempo Médio por Etapa / Produto (min)
-          </h2>
+        <ChartCard title="Tempo Médio por Etapa / Produto (min)">
           <div style={{ overflowX: 'auto' }}>
             <div style={{ minWidth: Math.max(700, productStageData.length * 72) }}>
               <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={productStageData}
-                  margin={{ top: 5, right: 20, left: 0, bottom: 100 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, angle: -45, textAnchor: 'end' }} interval={0} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v}min`} />
-                  <Tooltip formatter={(v, name) => [`${v} min`, name]} />
+                <BarChart data={productStageData} margin={{ top: 5, right: 20, left: 0, bottom: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, angle: -45, textAnchor: 'end', fill: TEXT_COLOR }} interval={0} />
+                  <YAxis tick={{ fontSize: 11, fill: TEXT_COLOR }} tickFormatter={v => `${v}min`} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={(v, name) => [`${v} min`, name]} />
                   <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, paddingBottom: 12 }} />
                   {allStages.map((stage, i) => (
-                    <Bar key={stage} dataKey={stage} stackId="a"
-                      fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+                    <Bar key={stage} dataKey={stage} stackId="a" fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
+        </ChartCard>
       )}
 
       {/* Etapas por produto — total */}
       {productStageTotalData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
-            Tempo Total por Etapa / Produto (min)
-          </h2>
+        <ChartCard title="Tempo Total por Etapa / Produto (min)">
           <div style={{ overflowX: 'auto' }}>
             <div style={{ minWidth: Math.max(700, productStageTotalData.length * 72) }}>
               <ResponsiveContainer width="100%" height={380}>
-                <BarChart data={productStageTotalData}
-                  margin={{ top: 5, right: 20, left: 0, bottom: 100 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, angle: -45, textAnchor: 'end' }} interval={0} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v}min`} />
-                  <Tooltip formatter={(v, name) => [`${v} min`, name]} />
+                <BarChart data={productStageTotalData} margin={{ top: 5, right: 20, left: 0, bottom: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, angle: -45, textAnchor: 'end', fill: TEXT_COLOR }} interval={0} />
+                  <YAxis tick={{ fontSize: 11, fill: TEXT_COLOR }} tickFormatter={v => `${v}min`} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={(v, name) => [`${v} min`, name]} />
                   <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, paddingBottom: 12 }} />
                   {allStages.map((stage, i) => (
-                    <Bar key={stage} dataKey={stage} stackId="a"
-                      fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
+                    <Bar key={stage} dataKey={stage} stackId="a" fill={STAGE_COLORS[i % STAGE_COLORS.length]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
+        </ChartCard>
       )}
 
       {/* Metas vs Real */}
       {targetCompareData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Metas vs Tempo Médio Real (min/ocorrência)</h2>
-          <p className="text-xs text-gray-400 mb-3">Apenas etapas com meta cadastrada.</p>
+        <ChartCard title="Metas vs Tempo Médio Real (min/ocorrência)" subtitle="Apenas etapas com meta cadastrada.">
           <ResponsiveContainer width="100%" height={Math.max(180, targetCompareData.length * 48)}>
-            <BarChart data={targetCompareData} layout="vertical"
-              margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v, name) => [`${v} min`, name === 'real' ? 'Média real' : 'Meta']} />
+            <BarChart data={targetCompareData} layout="vertical" margin={{ top: 0, right: 60, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={GRID_COLOR} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} formatter={(v, name) => [`${v} min`, name === 'real' ? 'Média real' : 'Meta']} />
               <Legend formatter={n => n === 'real' ? 'Média real' : 'Meta'} wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="meta" fill="#d1fae5" stroke="#16a34a" strokeWidth={1} radius={[0,4,4,0]} />
-              <Bar dataKey="real" radius={[0,4,4,0]}
-                fill="#2563eb"
-                label={{ position: 'right', fontSize: 10, fill: '#6b7280', formatter: v => `${v}min` }}
-              />
+              <Bar dataKey="meta" fill="hsl(142 60% 55% / 20%)" stroke={GREEN} strokeWidth={1} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="real" fill={BLUE} radius={[0, 4, 4, 0]}
+                label={{ position: 'right', fontSize: 10, fill: TEXT_COLOR, formatter: v => `${v}min` }} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       )}
 
       {/* Produção diária */}
       {daily && daily.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Produção Diária (kg)</h2>
+        <ChartCard title="Produção Diária (kg)">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={daily} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }}
-                tickFormatter={d => fmtDateShort(d)} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: TEXT_COLOR }} tickFormatter={d => fmtDateShort(d)} />
+              <YAxis tick={{ fontSize: 11, fill: TEXT_COLOR }} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(220 12% 14%)', border: '1px solid hsl(220 12% 20%)', borderRadius: 8 }} />
               <Legend />
-              <Line type="monotone" dataKey="planned"   stroke="#94a3b8" strokeWidth={2} dot={false} name="Planejado" />
-              <Line type="monotone" dataKey="produced"  stroke="#16a34a" strokeWidth={2} dot={false} name="Produzido" />
+              <Line type="monotone" dataKey="planned"  stroke="hsl(220 8% 58%)" strokeWidth={2} dot={false} name="Planejado" />
+              <Line type="monotone" dataKey="produced" stroke={GREEN}            strokeWidth={2} dot={false} name="Produzido" />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </ChartCard>
       )}
 
       {/* Timeline */}
       {timeline && timeline.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
-            Timeline de Ocupação — últimos 3 dias
-          </h2>
+        <ChartCard title="Timeline de Ocupação — últimos 3 dias">
           <GanttChart data={timeline} />
-        </div>
+        </ChartCard>
       )}
     </div>
   );

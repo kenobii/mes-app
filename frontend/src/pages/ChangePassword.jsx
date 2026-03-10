@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api }    from '../api/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input }  from '@/components/ui/input';
+import { Label }  from '@/components/ui/label';
+import { KeyRound } from 'lucide-react';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
@@ -17,7 +22,6 @@ export default function ChangePassword() {
       return setError('As senhas não coincidem.');
     if (form.password.length < 6)
       return setError('A senha deve ter no mínimo 6 caracteres.');
-
     setLoading(true);
     setError(null);
     try {
@@ -31,51 +35,55 @@ export default function ChangePassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <h1 className="text-lg font-bold text-gray-800">Definir nova senha</h1>
-          <p className="text-sm text-gray-400 mt-1">Olá, {user?.name}. Por segurança, defina uma senha pessoal.</p>
-        </div>
-
-        {error && (
-          <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2 text-center">
-            {error}
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center text-center pb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary mb-3">
+            <KeyRound className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <CardTitle className="text-base font-semibold text-foreground">Definir nova senha</CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Olá, {user?.name}. Por segurança, defina uma senha pessoal.
           </p>
-        )}
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-gray-600">Nova senha</span>
-            <input
-              type="password" required autoFocus
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              className="mt-1 block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
+        <CardContent className="space-y-4">
+          {error && (
+            <p className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md px-3 py-2 text-center">
+              {error}
+            </p>
+          )}
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Confirmar senha</span>
-            <input
-              type="password" required
-              value={form.confirm}
-              onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))}
-              className="mt-1 block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Nova senha</Label>
+              <Input
+                id="password" type="password" required autoFocus
+                value={form.password}
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              />
+            </div>
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
-            {loading ? 'Salvando…' : 'Salvar senha'}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm">Confirmar senha</Label>
+              <Input
+                id="confirm" type="password" required
+                value={form.confirm}
+                onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))}
+              />
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full mt-1">
+              {loading ? 'Salvando…' : 'Salvar senha'}
+            </Button>
+          </form>
+
+          <button onClick={logout}
+            className="w-full text-xs text-muted-foreground hover:text-foreground text-center transition-colors">
+            Sair e fazer login com outra conta
           </button>
-        </form>
-
-        <button onClick={logout}
-          className="w-full text-xs text-gray-400 hover:text-gray-600 text-center">
-          Sair e fazer login com outra conta
-        </button>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
