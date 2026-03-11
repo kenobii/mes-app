@@ -6,6 +6,7 @@ import OrderDetail     from './pages/OrderDetail';
 import NewOrder        from './pages/NewOrder';
 import Cadastros       from './pages/Cadastros';
 import ProductAnalysis from './pages/ProductAnalysis';
+import Tablet          from './pages/Tablet';
 import Login           from './pages/Login';
 import ChangePassword  from './pages/ChangePassword';
 import { Separator }  from '@/components/ui/separator';
@@ -105,7 +106,8 @@ function Sidebar({ nav, user, isGuest, logout }) {
 
 function AppShell() {
   const { token, user, logout, isGuest } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin     = user?.role === 'admin';
+  const isAuxiliar  = user?.role === 'auxiliar';
   const navFiltered = navBase.filter(n => !n.requiresAuth || !isGuest);
   const nav = isAdmin
     ? [...navFiltered, { to: '/cadastros', label: 'Cadastros', icon: Settings }]
@@ -117,6 +119,17 @@ function AppShell() {
         <Route path="/login"           element={<Login />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="*"                element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // Auxiliar de produção: acesso exclusivo à página tablet
+  if (isAuxiliar) {
+    return (
+      <Routes>
+        <Route path="/tablet"          element={<Tablet />} />
+        <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="*"                element={<Navigate to="/tablet" replace />} />
       </Routes>
     );
   }

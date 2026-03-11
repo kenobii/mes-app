@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
+import { api }     from '../api/client';
 import { fmtDate } from '../utils/format';
 import EditModal     from '../components/orders/EditModal';
 import DeleteConfirm from '../components/orders/DeleteConfirm';
@@ -71,9 +72,20 @@ export default function Orders() {
   const [sort,     setSort]     = useState({ key: null, dir: 'asc' });
   const [editing,  setEditing]  = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [approving, setApproving] = useState(null);
 
   const qs = `?date_from=${from}&date_to=${to}`;
   const { data: orders, loading, refetch } = useApi(`/orders${qs}`, [from, to]);
+
+  async function handleApprove(order) {
+    setApproving(order.id);
+    try {
+      await api.put(`/orders/${order.id}`, { status: 'Concluído' });
+      refetch();
+    } finally {
+      setApproving(null);
+    }
+  }
 
   const filtered = (orders || []).filter(o =>
     !search || o.product_name.toLowerCase().includes(search.toLowerCase())
@@ -175,8 +187,16 @@ export default function Orders() {
                       </Link>
                       {!isGuest && (
                         <>
+                          {o.status === 'Em Andamento' && (
+                            <button
+                              onClick={() => handleApprove(o)}
+                              disabled={approving === o.id}
+                              className="text-xs text-primary hover:text-primary/80 hover:underline mr-3 font-semibold disabled:opacity-50">
+                              {approving === o.id ? 'Aprovando…' : 'Aprovar'}
+                            </button>
+                          )}
                           <button onClick={() => setEditing(o)}
-                            className="text-xs text-primary hover:text-primary/80 hover:underline mr-3">
+                            className="text-xs text-muted-foreground hover:text-foreground hover:underline mr-3">
                             Editar
                           </button>
                           <button onClick={() => setDeleting(o)}
