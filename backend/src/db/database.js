@@ -52,33 +52,31 @@ db.exec(`
 try {
   db.exec('PRAGMA foreign_keys = OFF');
 
-  // ─── Produto: CREME DE LEITE DE AMÊNDOAS → CREME DE LEITE ──────────────
-  const cremeLeite = db.prepare("SELECT id FROM products WHERE name = 'Creme de Leite'").get();
-  if (cremeLeite) {
-    const variantesCremeAmd = [
-      'Creme de Leite de Amêndoas',
-      'CREME DE LEITE DE AMÊNDOAS',
-      'CREME DE LEITE DE AMENDOAS',
-      'Creme de Leite de Amendoas',
-      'CREME DE LEITE DE AMÊNDOAS (KG)',
-      'Creme de Leite de Amêndoas (KG)',
-    ];
-    for (const v of variantesCremeAmd) {
-      const old = db.prepare("SELECT id FROM products WHERE name = ?").get(v);
-      if (old) {
-        db.prepare("UPDATE production_orders SET product_id = ? WHERE product_id = ?").run(cremeLeite.id, old.id);
-        db.prepare("DELETE FROM products WHERE id = ?").run(old.id);
-        console.log(`[migração] produto: "${v}" → "Creme de Leite"`);
-      }
+  // Mescla oldName → canonicalName.
+  // Se canonicalName não existir no banco, renomeia oldName para se tornar o canônico.
+  function mergeStage(oldName, canonicalName) {
+    const old = db.prepare("SELECT id FROM stages WHERE name = ?").get(oldName);
+    if (!old) return;
+    let canonical = db.prepare("SELECT id FROM stages WHERE name = ?").get(canonicalName);
+    if (!canonical) {
+      db.prepare("UPDATE stages SET name = ? WHERE id = ?").run(canonicalName, old.id);
+      console.log(`[migração] etapa renomeada: "${oldName}" → "${canonicalName}"`);
+      return;
     }
+    if (old.id === canonical.id) return;
+    db.prepare("UPDATE production_steps SET stage_id = ? WHERE stage_id = ?").run(canonical.id, old.id);
+    db.prepare("DELETE FROM stages WHERE id = ?").run(old.id);
+    console.log(`[migração] etapa mesclada: "${oldName}" → "${canonicalName}"`);
   }
 
   // ─── Etapas: consolidações ──────────────────────────────────────────────
+  // IMPORTANTE: a primeira entrada de cada grupo canônico deve vir primeiro,
+  // pois se o canônico não existir ela é renomeada para criá-lo.
   const stageMerges = [
     ['ARMAZENAGEM',          'EMBALAGEM'],
     ['SELAR',                'EMBALAGEM'],
     ['DATAR',                'EMBALAGEM'],
-    ['PROCESSAR THERMOMIX',  'PROCESSAR'],
+    ['PROCESSAR THERMOMIX',  'PROCESSAR'],  // cria PROCESSAR se não existir
     ['BATER',                'PROCESSAR'],
     ['BATER AMÊNDOAS',       'PROCESSAR'],
     ['BATER AMENDOAS',       'PROCESSAR'],
@@ -97,27 +95,50 @@ try {
     ['POR MOLHO NA BANDEJA', 'MONTAGEM'],
     ['POR MOLHO NA BANDEIJA','MONTAGEM'],
     ['FECHAR EMPADA',        'TAMPAR'],
+    ['HIGIENIZAR BERINJELA', 'HIGIENIZAR'],  // cria HIGIENIZAR se não existir
+    ['HIGIENIZAR BERINGELA', 'HIGIENIZAR'],
     ['LAVAR',                'HIGIENIZAR'],
     ['LAVAGEM (MÁQUINA)',    'HIGIENIZAR'],
     ['LAVAGEM(MAQUINA)',     'HIGIENIZAR'],
-    ['HIGIENIZAR BERINJELA', 'HIGIENIZAR'],
-    ['HIGIENIZAR BERINGELA', 'HIGIENIZAR'],
   ];
 
   for (const [oldName, canonicalName] of stageMerges) {
-    const old = db.prepare("SELECT id FROM stages WHERE name = ?").get(oldName);
-    if (!old) continue;
-    const canonical = db.prepare("SELECT id FROM stages WHERE name = ?").get(canonicalName);
-    if (!canonical || old.id === canonical.id) continue;
-    db.prepare("UPDATE production_steps SET stage_id = ? WHERE stage_id = ?").run(canonical.id, old.id);
-    db.prepare("DELETE FROM stages WHERE id = ?").run(old.id);
-    console.log(`[migração] etapa: "${oldName}" → "${canonicalName}"`);
+    mergeStage(oldName, canonicalName);
+  }
+
+  // ─── Produto: CREME DE LEITE DE AMÊNDOAS → CREME DE LEITE ──────────────
+  // Busca o canônico por qualquer variante (casing, com ou sem unidade)
+  const cremeLeiteCanonicos = [
+    'Creme de Leite', 'CREME DE LEITE', 'CREME DE LEITE (KG)', 'Creme de Leite (KG)',
+  ];
+  const cremeLeiteAntigos = [
+    'CREME DE LEITE DE AMÊNDOAS (KG)', 'Creme de Leite de Amêndoas (KG)',
+    'CREME DE LEITE DE AMÊNDOAS',      'Creme de Leite de Amêndoas',
+    'CREME DE LEITE DE AMENDOAS (KG)', 'Creme de Leite de Amendoas (KG)',
+    'CREME DE LEITE DE AMENDOAS',      'Creme de Leite de Amendoas',
+  ];
+
+  let cremeLeiteId = null;
+  for (const name of cremeLeiteCanonicos) {
+    const row = db.prepare("SELECT id FROM products WHERE name = ?").get(name);
+    if (row) { cremeLeiteId = row.id; break; }
+  }
+
+  if (cremeLeiteId) {
+    for (const name of cremeLeiteAntigos) {
+      const old = db.prepare("SELECT id FROM products WHERE name = ?").get(name);
+      if (old && old.id !== cremeLeiteId) {
+        db.prepare("UPDATE production_orders SET product_id = ? WHERE product_id = ?").run(cremeLeiteId, old.id);
+        db.prepare("DELETE FROM products WHERE id = ?").run(old.id);
+        console.log(`[migração] produto mesclado: "${name}" → Creme de Leite`);
+      }
+    }
   }
 
   db.exec('PRAGMA foreign_keys = ON');
 } catch (e) {
   console.error('[migração] Erro nas migrations de normalização:', e.message);
-  db.exec('PRAGMA foreign_keys = ON');
+  try { db.exec('PRAGMA foreign_keys = ON'); } catch (_) {}
 }
 
 module.exports = db;
