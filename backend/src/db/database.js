@@ -100,6 +100,7 @@ try {
     ['LAVAR',                'HIGIENIZAR'],
     ['LAVAGEM (MÁQUINA)',    'HIGIENIZAR'],
     ['LAVAGEM(MAQUINA)',     'HIGIENIZAR'],
+    ['PRÉ PREPARO',          'SEPARAR INSUMOS'],
   ];
 
   for (const [oldName, canonicalName] of stageMerges) {
@@ -139,6 +140,77 @@ try {
 } catch (e) {
   console.error('[migração] Erro nas migrations de normalização:', e.message);
   try { db.exec('PRAGMA foreign_keys = ON'); } catch (_) {}
+}
+
+// Migração de normalização de produtos — nomes ALL CAPS com unidade → Title Case sem unidade no nome
+try {
+  const productRenames = [
+    ['ABOBRINHA ASSADA (KG)',             'Abobrinha Assada',            'KG' ],
+    ['BERINJELA ASSADA (KG)',             'Berinjela Assada',            'KG' ],
+    ['CALDO DE LEGUMES (KG)',             'Caldo de Legumes',            'KG' ],
+    ['CREME DE ARROZ (KG)',               'Creme de Arroz',              'KG' ],
+    ['CREME DE INHAME (KG)',              'Creme de Inhame',             'KG' ],
+    ['CREME DE LEITE (KG)',               'Creme de Leite',              'KG' ],
+    ['CUSCUZ PAULISTA (KG)',              'Cuscuz Paulista',             'KG' ],
+    ['DISCO DE LEGUMES 240G',             'Discos Proteicos 240g',       'UND'],
+    ['EMPADA DE ESPINAFRE M (KG)',        'Empada de Espinafre M',       'KG' ],
+    ['EMPADA DE ESPINAFRE PP (KG)',       'Empada de Espinafre PP',      'KG' ],
+    ['EMPADA DE MAÇÃ (KG)',              'Empada de Maçã',              'KG' ],
+    ['EMPADA DE MAÇÃ 120G',             'Empada de Maçã 120g',         'UND'],
+    ['EMPADA DE PALMITO (M) EM KG',      'Empada de Palmito M',         'KG' ],
+    ['EMPADA DE PALMITO (PP) EM KG',     'Empada de Palmito PP',        'KG' ],
+    ['EMPADA DE PALMITO 160G',           'Empada de Palmito 160g',      'UND'],
+    ['EMPADA DE SABORES P (KG)',          'Empada de Sabores P',         'KG' ],
+    ['EMPADA DE TOMATE SECO (PP) EM KG', 'Empada de Tomate Seco PP',    'KG' ],
+    ['EMPADA DE TOMATE SECO P (KG)',      'Empada de Tomate Seco P',     'KG' ],
+    ['ESTROGONOFE DE GRÃO DE BICO (KG)', 'Estrogonofe de Grão de Bico', 'KG' ],
+    ['FARINHA DE AMÊNDOAS (KG)',         'Farinha de Amêndoas',         'KG' ],
+    ['GRÃO DE BICO COZIDO (KG)',         'Grão de Bico Cozido',         'KG' ],
+    ['GUISADO DE PINHÃO 450G',           'Guisado de Pinhão 450g',      'UND'],
+    ['LASANHA DE ABOBRINHA (KG)',         'Lasanha de Abobrinha',        'KG' ],
+    ['LASANHA DE ABOBRINHA 410 G',        'Lasanha de Abobrinha 410g',   'UND'],
+    ['LASANHA DE BERINJELA 1,2KG (UND)', 'Lasanha de Berinjela 1,2kg',  'UND'],
+    ['LASANHA DE BERINJELA 410G (UND)',  'Lasanha de Berinjela 410g',   'UND'],
+    ['LENTILHA COZIDA (KG)',             'Lentilha Cozida',             'KG' ],
+    ['MASSA DE EMPADA (KG)',             'Massa de Empada',             'KG' ],
+    ['MOLHO DE TOMATE (KG)',             'Molho de Tomate',             'KG' ],
+    ['PALMITO (KG)',                     'Palmito',                     'KG' ],
+    ['PASTA DE ALHO (KG)',               'Pasta de Alho',               'KG' ],
+    ['PINHÃO COZIDO (KG)',              'Pinhão Cozido',               'KG' ],
+    ['PÃO DE QUEIJO VEGANO (KG)',        'Pão de Queijo Vegano',        'KG' ],
+    ['QUEIJO DE INHAME (KG)',            'Queijo de Inhame',            'KG' ],
+    ['QUEIJO VEGANO DA CASA (KG)',       'Queijo Vegano da Casa',       'KG' ],
+    ['QUIBE VEGANO (KG)',                'Quibe Vegano',                'KG' ],
+    ['QUIBE VEGANO 180G',               'Quibe Vegano 180g',           'UND'],
+    ['QUICHE SABORES (KG)',              'Quiche Sabores',              'KG' ],
+    ['RECHEIO DE MAÇÃ (KG)',            'Recheio de Maçã',             'KG' ],
+    ['RECHEIO DE PALMITO (KG)',          'Recheio de Palmito',          'KG' ],
+    ['RECHEIO DE TOMATE SECO (KG)',      'Recheio de Tomate Seco',      'KG' ],
+  ];
+
+  const stmtRename = db.prepare('UPDATE products SET name = ?, unit = ? WHERE name = ?');
+  for (const [oldName, newName, unit] of productRenames) {
+    const r = stmtRename.run(newName, unit, oldName);
+    if (r.changes > 0) console.log(`[migração] produto: "${oldName}" → "${newName}"`);
+  }
+
+  // Inserir produtos ausentes (adicionados pelo normalize4.js, inexistentes no Railway)
+  const toInsert = [
+    ['Empada de Espinafre 160g',         'UND'],
+    ['Empada de Palmito P',              'KG' ],
+    ['Empada de Alho Poró P',            'KG' ],
+    ['Estrogonofe de Grão de Bico 450g', 'UND'],
+  ];
+  const stmtCheck  = db.prepare('SELECT 1 FROM products WHERE name = ?');
+  const stmtInsert = db.prepare('INSERT INTO products (name, unit) VALUES (?, ?)');
+  for (const [name, unit] of toInsert) {
+    if (!stmtCheck.get(name)) {
+      stmtInsert.run(name, unit);
+      console.log(`[migração] produto inserido: "${name}" (${unit})`);
+    }
+  }
+} catch (e) {
+  console.error('[migração produtos] Erro:', e.message);
 }
 
 module.exports = db;
