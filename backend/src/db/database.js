@@ -47,4 +47,77 @@ db.exec(`
   )
 `);
 
+// Migração de normalização de nomes — idempotente
+// Corrige bancos existentes que não passaram pelos scripts normalize*.js
+try {
+  db.exec('PRAGMA foreign_keys = OFF');
+
+  // ─── Produto: CREME DE LEITE DE AMÊNDOAS → CREME DE LEITE ──────────────
+  const cremeLeite = db.prepare("SELECT id FROM products WHERE name = 'Creme de Leite'").get();
+  if (cremeLeite) {
+    const variantesCremeAmd = [
+      'Creme de Leite de Amêndoas',
+      'CREME DE LEITE DE AMÊNDOAS',
+      'CREME DE LEITE DE AMENDOAS',
+      'Creme de Leite de Amendoas',
+      'CREME DE LEITE DE AMÊNDOAS (KG)',
+      'Creme de Leite de Amêndoas (KG)',
+    ];
+    for (const v of variantesCremeAmd) {
+      const old = db.prepare("SELECT id FROM products WHERE name = ?").get(v);
+      if (old) {
+        db.prepare("UPDATE production_orders SET product_id = ? WHERE product_id = ?").run(cremeLeite.id, old.id);
+        db.prepare("DELETE FROM products WHERE id = ?").run(old.id);
+        console.log(`[migração] produto: "${v}" → "Creme de Leite"`);
+      }
+    }
+  }
+
+  // ─── Etapas: consolidações ──────────────────────────────────────────────
+  const stageMerges = [
+    ['ARMAZENAGEM',          'EMBALAGEM'],
+    ['SELAR',                'EMBALAGEM'],
+    ['DATAR',                'EMBALAGEM'],
+    ['PROCESSAR THERMOMIX',  'PROCESSAR'],
+    ['BATER',                'PROCESSAR'],
+    ['BATER AMÊNDOAS',       'PROCESSAR'],
+    ['BATER AMENDOAS',       'PROCESSAR'],
+    ['FERVER AMÊNDOAS',      'PROCESSAR'],
+    ['FERVER AMENDOAS',      'PROCESSAR'],
+    ['LIQUIDIFICAR',         'PROCESSAR'],
+    ['MISTURAR MASSA',       'HOMOGENEIZAR'],
+    ['CONTAR FORMINHAS',     'SEPARAR INSUMOS'],
+    ['PESAR INSUMOS',        'SEPARAR INSUMOS'],
+    ['PESAR',                'SEPARAR INSUMOS'],
+    ['PESAR ÁGUA',           'SEPARAR INSUMOS'],
+    ['PESAR AGUA',           'SEPARAR INSUMOS'],
+    ['PESAR AMÊNDOAS',       'SEPARAR INSUMOS'],
+    ['PESAR AMENDOAS',       'SEPARAR INSUMOS'],
+    ['INICIO',               'SEPARAR INSUMOS'],
+    ['POR MOLHO NA BANDEJA', 'MONTAGEM'],
+    ['POR MOLHO NA BANDEIJA','MONTAGEM'],
+    ['FECHAR EMPADA',        'TAMPAR'],
+    ['LAVAR',                'HIGIENIZAR'],
+    ['LAVAGEM (MÁQUINA)',    'HIGIENIZAR'],
+    ['LAVAGEM(MAQUINA)',     'HIGIENIZAR'],
+    ['HIGIENIZAR BERINJELA', 'HIGIENIZAR'],
+    ['HIGIENIZAR BERINGELA', 'HIGIENIZAR'],
+  ];
+
+  for (const [oldName, canonicalName] of stageMerges) {
+    const old = db.prepare("SELECT id FROM stages WHERE name = ?").get(oldName);
+    if (!old) continue;
+    const canonical = db.prepare("SELECT id FROM stages WHERE name = ?").get(canonicalName);
+    if (!canonical || old.id === canonical.id) continue;
+    db.prepare("UPDATE production_steps SET stage_id = ? WHERE stage_id = ?").run(canonical.id, old.id);
+    db.prepare("DELETE FROM stages WHERE id = ?").run(old.id);
+    console.log(`[migração] etapa: "${oldName}" → "${canonicalName}"`);
+  }
+
+  db.exec('PRAGMA foreign_keys = ON');
+} catch (e) {
+  console.error('[migração] Erro nas migrations de normalização:', e.message);
+  db.exec('PRAGMA foreign_keys = ON');
+}
+
 module.exports = db;
