@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -8,8 +9,10 @@ import GanttChart from '../components/GanttChart';
 import { fmtDateShort } from '../utils/format';
 import { STAGE_COLORS } from '../utils/colors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { CalendarClock, CheckCircle2 } from 'lucide-react';
 
 const today    = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
@@ -33,12 +36,17 @@ function ChartCard({ title, subtitle, children, className }) {
   );
 }
 
+const STATUS_VARIANT = { 'Pendente': 'warning', 'Em Andamento': 'default', 'Concluído': 'success' };
+
 export default function Dashboard() {
   const [from,       setFrom]       = useState(monthAgo);
   const [to,         setTo]         = useState(today);
   const [operatorId, setOperatorId] = useState('');
 
   const { data: operators } = useApi('/operators');
+
+  // Ordens de hoje (Pendente + Em Andamento)
+  const { data: todayOrders } = useApi(`/orders?date_from=${today}&date_to=${today}&status=Pendente,Em+Andamento`);
 
   const qs = `?date_from=${from}&date_to=${to}${operatorId ? `&operator_id=${operatorId}` : ''}`;
 
@@ -133,6 +141,51 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Ordens de Hoje */}
+      {todayOrders != null && (
+        <Card className={todayOrders.length > 0 ? 'border-l-4 border-l-primary' : ''}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm font-semibold text-foreground">
+                  Ordens de Hoje — {new Date(today + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </CardTitle>
+              </div>
+              <Badge variant="secondary">{todayOrders.length} {todayOrders.length === 1 ? 'ordem' : 'ordens'}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {todayOrders.length === 0 ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                <CheckCircle2 className="h-4 w-4 opacity-50" />
+                Nenhuma ordem pendente para hoje.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                {todayOrders.map(order => (
+                  <Link
+                    key={order.id}
+                    to={`/orders/${order.id}`}
+                    className="flex items-start justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 hover:bg-muted/60 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{order.product_name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {order.planned_qty != null ? `${order.planned_qty} ${order.unit}` : 'Sem qtd'}
+                      </p>
+                    </div>
+                    <Badge variant={STATUS_VARIANT[order.status] ?? 'outline'} className="text-[10px] shrink-0 mt-0.5">
+                      {order.status}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPIs */}
       {summary && (
