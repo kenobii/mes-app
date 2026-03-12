@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button }  from '@/components/ui/button';
 import { Input }   from '@/components/ui/input';
 import { Badge }   from '@/components/ui/badge';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, RefreshCw } from 'lucide-react';
 
 const today    = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
@@ -64,8 +64,16 @@ function exportCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'Z');
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
 export default function Orders() {
-  const { isGuest } = useAuth();
+  const { isGuest, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [from,     setFrom]     = useState(monthAgo);
   const [to,       setTo]       = useState(today);
   const [search,   setSearch]   = useState('');
@@ -74,8 +82,47 @@ export default function Orders() {
   const [deleting, setDeleting] = useState(null);
   const [approving, setApproving] = useState(null);
 
+  // Sync Fácil123
+  const [syncing,   setSyncing]   = useState(false);
+  const [syncInfo,  setSyncInfo]  = useState(null);
+  const pollRef = useRef(null);
+
   const qs = `?date_from=${from}&date_to=${to}`;
   const { data: orders, loading, refetch } = useApi(`/orders${qs}`, [from, to]);
+
+  // Carrega status do último sync ao montar
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.get('/sync').then(d => setSyncInfo(d)).catch(() => {});
+  }, [isAdmin]);
+
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await api.post('/sync', {});
+    } catch (e) {
+      setSyncing(false);
+      return;
+    }
+    // Polling até sync terminar
+    pollRef.current = setInterval(async () => {
+      try {
+        const d = await api.get('/sync');
+        setSyncInfo(d);
+        if (!d.running) {
+          clearInterval(pollRef.current);
+          setSyncing(false);
+          refetch();
+        }
+      } catch (_) {
+        clearInterval(pollRef.current);
+        setSyncing(false);
+      }
+    }, 4000);
+  }
+
+  useEffect(() => () => clearInterval(pollRef.current), []);
 
   async function handleApprove(order) {
     setApproving(order.id);
@@ -120,6 +167,22 @@ export default function Orders() {
             <Button variant="outline" size="sm" onClick={() => exportCSV(rows)} disabled={rows.length === 0}>
               <Download className="h-4 w-4" /> Exportar CSV
             </Button>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Sincronizando…' : 'Atualizar Fácil123'}
+                </Button>
+                {syncInfo?.lastSync && (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {syncInfo.lastSync.status === 'ok' || syncInfo.lastSync.status === 'partial'
+                      ? `Sync: ${fmtDateTime(syncInfo.lastSync.finished_at)}`
+                      : `Sync: ${syncInfo.lastSync.status}`
+                    }
+                  </span>
+                )}
+              </div>
+            )}
             {!isGuest && (
               <Button size="sm" asChild>
                 <Link to="/orders/new"><Plus className="h-4 w-4" /> Nova Ordem</Link>
