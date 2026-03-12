@@ -49,6 +49,16 @@ router.get('/by-product-stage', (req, res) => {
   res.json(dashboardRepository.getByProductStage({ date_from, date_to, operator_id }, product_id));
 });
 
+router.get('/by-operator', (req, res) => {
+  const { date_from, date_to } = req.query;
+  res.json(dashboardRepository.getByOperator({ date_from, date_to }));
+});
+
+router.get('/top-products-by-operator', (req, res) => {
+  const { date_from, date_to } = req.query;
+  res.json(dashboardRepository.getTopProductsByOperator({ date_from, date_to }));
+});
+
 router.get('/pauses', (req, res) => {
   const { date_from, date_to, operator_id } = req.query;
   res.json(dashboardRepository.getPauses({ date_from, date_to, operator_id }));

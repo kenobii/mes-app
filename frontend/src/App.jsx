@@ -1,14 +1,16 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Dashboard       from './pages/Dashboard';
-import Orders          from './pages/Orders';
-import OrderDetail     from './pages/OrderDetail';
-import NewOrder        from './pages/NewOrder';
-import Cadastros       from './pages/Cadastros';
-import ProductAnalysis from './pages/ProductAnalysis';
-import Tablet          from './pages/Tablet';
-import Login           from './pages/Login';
-import ChangePassword  from './pages/ChangePassword';
+import { useApi }         from './hooks/useApi';
+import Dashboard          from './pages/Dashboard';
+import Orders             from './pages/Orders';
+import OrderDetail        from './pages/OrderDetail';
+import NewOrder           from './pages/NewOrder';
+import Cadastros          from './pages/Cadastros';
+import ProductAnalysis    from './pages/ProductAnalysis';
+import OperatorAnalysis   from './pages/OperatorAnalysis';
+import Tablet             from './pages/Tablet';
+import Login              from './pages/Login';
+import ChangePassword     from './pages/ChangePassword';
 import { Separator }  from '@/components/ui/separator';
 import { Badge }      from '@/components/ui/badge';
 import { Button }     from '@/components/ui/button';
@@ -17,6 +19,7 @@ import {
   ClipboardList,
   PlusCircle,
   BarChart2,
+  Users,
   Settings,
   LogOut,
   LogIn,
@@ -24,10 +27,11 @@ import {
 } from 'lucide-react';
 
 const navBase = [
-  { to: '/',           label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/analysis',   label: 'Por Etapa',  icon: BarChart2 },
-  { to: '/orders',     label: 'Ordens',     icon: ClipboardList },
-  { to: '/orders/new', label: 'Nova Ordem', icon: PlusCircle, requiresAuth: true },
+  { to: '/',                  label: 'Dashboard',     icon: LayoutDashboard },
+  { to: '/analysis',          label: 'Por Etapa',     icon: BarChart2 },
+  { to: '/operator-analysis', label: 'Por Operador',  icon: Users },
+  { to: '/orders',            label: 'Ordens',        icon: ClipboardList, pendingBadge: true },
+  { to: '/orders/new',        label: 'Nova Ordem',    icon: PlusCircle, requiresAuth: true },
 ];
 
 function ProtectedRoute({ children }) {
@@ -43,7 +47,7 @@ function AdminRoute({ children }) {
   return children;
 }
 
-function Sidebar({ nav, user, isGuest, logout }) {
+function Sidebar({ nav, user, isGuest, logout, pendingCount }) {
   return (
     <aside className="w-60 shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border min-h-screen">
       {/* Logo */}
@@ -58,7 +62,7 @@ function Sidebar({ nav, user, isGuest, logout }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
-        {nav.map(({ to, label, icon: Icon }) => (
+        {nav.map(({ to, label, icon: Icon, pendingBadge }) => (
           <NavLink
             key={to}
             to={to}
@@ -70,7 +74,10 @@ function Sidebar({ nav, user, isGuest, logout }) {
             }
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {pendingBadge && pendingCount > 0 && (
+              <Badge className="h-4 min-w-4 px-1 text-[10px] leading-none">{pendingCount}</Badge>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -106,8 +113,13 @@ function Sidebar({ nav, user, isGuest, logout }) {
 
 function AppShell() {
   const { token, user, logout, isGuest } = useAuth();
-  const isAdmin     = user?.role === 'admin';
-  const isAuxiliar  = user?.role === 'producao';
+  const isAdmin    = user?.role === 'admin';
+  const isAuxiliar = user?.role === 'producao';
+
+  // Badge de ordens pendentes no nav
+  const { data: pendingOrders } = useApi(token && !isAuxiliar ? '/orders?status=Pendente' : null);
+  const pendingCount = pendingOrders?.length ?? 0;
+
   const navFiltered = navBase.filter(n => !n.requiresAuth || !isGuest);
   const nav = isAdmin
     ? [...navFiltered, { to: '/cadastros', label: 'Cadastros', icon: Settings }]
@@ -136,19 +148,20 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar nav={nav} user={user} isGuest={isGuest} logout={logout} />
+      <Sidebar nav={nav} user={user} isGuest={isGuest} logout={logout} pendingCount={pendingCount} />
 
       <main className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <Routes>
-            <Route path="/"                element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/analysis"        element={<ProtectedRoute><ProductAnalysis /></ProtectedRoute>} />
-            <Route path="/orders"          element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-            <Route path="/orders/new"      element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
-            <Route path="/orders/:id"      element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
-            <Route path="/cadastros"       element={<AdminRoute><Cadastros /></AdminRoute>} />
-            <Route path="/change-password" element={<ChangePassword />} />
-            <Route path="*"                element={<Navigate to="/" replace />} />
+            <Route path="/"                    element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/analysis"            element={<ProtectedRoute><ProductAnalysis /></ProtectedRoute>} />
+            <Route path="/operator-analysis"   element={<ProtectedRoute><OperatorAnalysis /></ProtectedRoute>} />
+            <Route path="/orders"              element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/orders/new"          element={<ProtectedRoute><NewOrder /></ProtectedRoute>} />
+            <Route path="/orders/:id"          element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+            <Route path="/cadastros"           element={<AdminRoute><Cadastros /></AdminRoute>} />
+            <Route path="/change-password"     element={<ChangePassword />} />
+            <Route path="*"                    element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </main>

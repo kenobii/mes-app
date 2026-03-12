@@ -85,7 +85,9 @@ export default function Orders() {
   // Sync Fácil123
   const [syncing,   setSyncing]   = useState(false);
   const [syncInfo,  setSyncInfo]  = useState(null);
-  const pollRef = useRef(null);
+  const [syncToast, setSyncToast] = useState(null); // { imported, errors }
+  const pollRef  = useRef(null);
+  const toastRef = useRef(null);
 
   const qs = `?date_from=${from}&date_to=${to}`;
   const { data: orders, loading, refetch } = useApi(`/orders${qs}`, [from, to]);
@@ -95,6 +97,12 @@ export default function Orders() {
     if (!isAdmin) return;
     api.get('/sync').then(d => setSyncInfo(d)).catch(() => {});
   }, [isAdmin]);
+
+  function showToast(lastSync) {
+    setSyncToast(lastSync);
+    clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setSyncToast(null), 6000);
+  }
 
   async function handleSync() {
     if (syncing) return;
@@ -114,6 +122,7 @@ export default function Orders() {
           clearInterval(pollRef.current);
           setSyncing(false);
           refetch();
+          if (d.lastSync) showToast(d.lastSync);
         }
       } catch (_) {
         clearInterval(pollRef.current);
@@ -122,7 +131,7 @@ export default function Orders() {
     }, 4000);
   }
 
-  useEffect(() => () => clearInterval(pollRef.current), []);
+  useEffect(() => () => { clearInterval(pollRef.current); clearTimeout(toastRef.current); }, []);
 
   async function handleApprove(order) {
     setApproving(order.id);
@@ -151,6 +160,22 @@ export default function Orders() {
     <div className="space-y-4">
       {editing  && <EditModal    order={editing}  onClose={() => setEditing(null)}  onSaved={refetch} />}
       {deleting && <DeleteConfirm order={deleting} onClose={() => setDeleting(null)} onDeleted={refetch} />}
+
+      {/* Toast de sync */}
+      {syncToast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-card border border-border rounded-xl shadow-xl px-4 py-3 flex items-start gap-3 max-w-xs animate-in slide-in-from-bottom-2">
+          <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${syncToast.errors > 0 ? 'bg-yellow-400' : 'bg-primary'}`} />
+          <div>
+            <p className="text-sm font-medium text-foreground">Sync Fácil123 concluído</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {syncToast.imported > 0 ? `${syncToast.imported} nova(s) ordem(s) importada(s)` : 'Nenhuma ordem nova'}
+              {syncToast.updated  > 0 ? ` · ${syncToast.updated} atualizada(s)` : ''}
+              {syncToast.errors   > 0 ? ` · ${syncToast.errors} erro(s)` : ''}
+            </p>
+          </div>
+          <button onClick={() => setSyncToast(null)} className="text-muted-foreground hover:text-foreground ml-1 text-base leading-none">×</button>
+        </div>
+      )}
 
       {/* Filtros */}
       <Card>

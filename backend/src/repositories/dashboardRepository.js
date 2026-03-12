@@ -165,6 +165,48 @@ const dashboardRepository = {
     return Object.values(byProduct);
   },
 
+  getByOperator: (filters) => {
+    const where = buildWhere(filters);
+    return db.prepare(`
+      SELECT
+        COALESCE(op.name, 'Sem operador')              AS operator,
+        op.id                                          AS operator_id,
+        COUNT(DISTINCT o.id)                           AS total_orders,
+        COUNT(DISTINCT o.product_id)                   AS total_products,
+        ROUND(SUM(o.produced_qty), 2)                  AS total_produced,
+        ROUND(AVG(CASE WHEN o.planned_qty > 0
+          THEN o.produced_qty * 100.0 / o.planned_qty END), 1) AS avg_efficiency_pct,
+        COUNT(s.id)                                    AS total_steps,
+        ROUND(SUM(s.net_time_minutes), 1)              AS total_net_minutes,
+        ROUND(AVG(s.net_time_minutes), 1)              AS avg_step_minutes
+      FROM production_orders o
+      LEFT JOIN operators     op ON op.id = o.operator_id
+      LEFT JOIN production_steps s ON s.order_id = o.id
+      ${where.sql}
+      GROUP BY o.operator_id
+      ORDER BY total_net_minutes DESC NULLS LAST
+    `).all(...where.params);
+  },
+
+  getTopProductsByOperator: (filters) => {
+    const where = buildWhere(filters);
+    return db.prepare(`
+      SELECT
+        COALESCE(op.name, 'Sem operador') AS operator,
+        op.id                             AS operator_id,
+        p.name                            AS product,
+        COUNT(DISTINCT o.id)              AS orders,
+        ROUND(SUM(o.produced_qty), 2)     AS total_produced,
+        p.unit
+      FROM production_orders o
+      LEFT JOIN operators op ON op.id = o.operator_id
+      JOIN products       p  ON p.id  = o.product_id
+      ${where.sql}
+      GROUP BY o.operator_id, o.product_id
+      ORDER BY operator, orders DESC
+    `).all(...where.params);
+  },
+
   getPauses: (filters) => {
     const where = buildWhere(filters);
     return db.prepare(`
