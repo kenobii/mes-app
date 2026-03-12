@@ -215,6 +215,27 @@ try {
   console.error('[migração produtos] Erro:', e.message);
 }
 
+// Corrige nomes de produtos criados automaticamente pelo sync com capitalização errada
+try {
+  const badNames = [
+    ['GrãO De Bico OrgâNico Cozido',      'Grão de Bico Orgânico Cozido'],
+    ['Creme De Leite De AmêNdoas',         'Creme de Leite de Amêndoas'],
+    ['Lentilha Canadense Cozida',          'Lentilha Canadense Cozida'],   // já correto, mantém
+    ['Desmoldante Da Casa',                'Desmoldante da Casa'],
+    ['Massa De Empada Doce',               'Massa de Empada Doce'],
+    ['Molho Verde',                        'Molho Verde'],
+    ['Molho Branco',                       'Molho Branco'],
+    ['Queijo Cajupiry Da Casa',            'Queijo Cajupiry da Casa'],
+  ];
+  const stmt = db.prepare('UPDATE products SET name = ? WHERE name = ?');
+  for (const [old, fixed] of badNames) {
+    const r = stmt.run(fixed, old);
+    if (r.changes > 0) console.log(`[migração] produto corrigido: "${old}" → "${fixed}"`);
+  }
+} catch (e) {
+  console.error('[migração] Erro ao corrigir nomes de produtos:', e.message);
+}
+
 // Tabela de log de sincronização com Fácil123
 db.exec(`
   CREATE TABLE IF NOT EXISTS sync_logs (

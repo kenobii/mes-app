@@ -103,13 +103,15 @@ function resolveProductId(facil123Name, productMap) {
   if (mapped && productMap.has(mapped)) return productMap.get(mapped);
 
   // 3. Cria novo produto automaticamente (Title Case, unidade KG por padrão)
+  const LOWER_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'em', 'no', 'na', 'com', 'por', 'para', 'sem']);
   const newName = facil123Name
     .toLowerCase()
     .replace(/\s+(em\s+)?kg\b/gi, '')
     .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
-    .map(w => w ? w[0].toUpperCase() + w.slice(1) : w)
+    .map((w, i) => (!w ? w : (i === 0 || !LOWER_WORDS.has(w)) ? w[0].toUpperCase() + w.slice(1) : w))
     .join(' ');
 
   const existing = db.prepare('SELECT id FROM products WHERE name = ?').get(newName);
