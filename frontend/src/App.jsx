@@ -107,7 +107,7 @@ function Sidebar({ nav, user, isGuest, logout }) {
 function AppShell() {
   const { token, user, logout, isGuest } = useAuth();
   const isAdmin     = user?.role === 'admin';
-  const isAuxiliar  = user?.role === 'auxiliar';
+  const isAuxiliar  = user?.role === 'producao';
   const navFiltered = navBase.filter(n => !n.requiresAuth || !isGuest);
   const nav = isAdmin
     ? [...navFiltered, { to: '/cadastros', label: 'Cadastros', icon: Settings }]
