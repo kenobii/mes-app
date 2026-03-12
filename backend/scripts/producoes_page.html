@@ -1,0 +1,55 @@
+
+    
+  <div data-controller="flash" data-flash-type="alert" data-flash-message="Para continuar, efetue login."></div>
+
+    <section class="access">
+  <div class="container">
+    <div class="row flex-full-center">
+      <div class="col-md-21">
+        <div class="primary-action">
+          <div class="row mb-5">
+            <div class="col">
+              <img src="/assets/logo/logo-facil123-positive-28b9b485.svg">
+              <h2>Faça seu login</h2>
+            </div>
+          </div>
+
+          <form action="/usuarios/entrar" accept-charset="UTF-8" method="post"><input type="hidden" name="authenticity_token" value="ASuiZ3l38nNru9BZvjGndJerJjGZ8u3vLY2mXmPWO6ucVIvn941Fnt_rm0lBVWGok51kHtT0IG-h6AfkKQohHQ">
+            
+
+            <div class="mb-3">
+              <input class="form-control" placeholder="e-mail" autocomplete="email" type="email" name="user[email]" id="user_email">
+            </div>
+
+            <div class="mb-3">
+              <input class="form-control" placeholder="senha" autocomplete="current-password" type="password" name="user[password]" id="user_password">
+            </div>
+
+            <div class="mb-3">
+              <label class="col-form-label checkbox">
+                <input name="user[remember_me]" type="hidden" value="0"><input type="checkbox" value="1" name="user[remember_me]" id="user_remember_me"> Mantenha-me conectado
+              </label>
+            </div>
+
+            <input type="submit" name="commit" value="Entrar" class="btn btn-primary col-36 d-block" data-disable-with="Entrar">
+</form>
+          <div class="alternative-action">
+            <a class="text-link" href="/usuarios/senha/recuperar">Esqueceu sua senha?</a>
+            <a class="text-link" href="/usuarios/desbloquear/recuperar">Você não recebeu as instruções de desbloqueio?</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-15">
+        <div class="secondary-action">
+          <p>Ainda não é cliente e deseja conhecer o Fácil123?</p>
+          <a class="btn btn-info-inverted" href="https://facil123.com.br">Fale com um especialista</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  
+
+<div id="toast-container" class="toast-top-right"><div class="toast toast-error" aria-live="assertive" style="opacity: 0.999842;"><button type="button" class="toast-close-button" role="button">×</button><div class="toast-message">Para continuar, efetue login.</div></div></div>

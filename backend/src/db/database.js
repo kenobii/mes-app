@@ -35,6 +35,8 @@ for (const sql of authCols) {
 // Migração de role — idempotente
 try { db.exec("ALTER TABLE operators ADD COLUMN role TEXT DEFAULT 'user'"); } catch (_) {}
 db.prepare("UPDATE operators SET role = 'admin' WHERE name = 'Ygor' AND (role IS NULL OR role != 'admin')").run();
+// Renomeia role 'auxiliar' para 'producao' (refatoração de nomenclatura)
+db.prepare("UPDATE operators SET role = 'producao' WHERE role = 'auxiliar'").run();
 
 // Migração de metas — idempotente
 db.exec(`

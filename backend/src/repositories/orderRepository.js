@@ -27,7 +27,16 @@ const orderRepository = {
     if (date_to)     { sql += ` AND o.production_date <= ?`; params.push(date_to); }
     if (product_id)  { sql += ` AND o.product_id = ?`;       params.push(product_id); }
     if (operator_id) { sql += ` AND o.operator_id = ?`;      params.push(operator_id); }
-    if (status)      { sql += ` AND o.status = ?`;           params.push(status); }
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      if (statuses.length === 1) {
+        sql += ` AND o.status = ?`;
+        params.push(statuses[0]);
+      } else {
+        sql += ` AND o.status IN (${statuses.map(() => '?').join(',')})`;
+        params.push(...statuses);
+      }
+    }
     sql += ` ORDER BY o.production_date DESC, o.id DESC`;
     return db.prepare(sql).all(...params);
   },

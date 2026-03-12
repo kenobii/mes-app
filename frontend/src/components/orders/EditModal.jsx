@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { api }    from '../../api/client';
+import { Button } from '@/components/ui/button';
+import { Input }  from '@/components/ui/input';
+import { Label }  from '@/components/ui/label';
 
 const today = new Date().toISOString().slice(0, 10);
+
+const selectCls = "w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring";
 
 export default function EditModal({ order, onClose, onSaved }) {
   const { data: products  } = useApi('/products');
@@ -38,78 +43,67 @@ export default function EditModal({ order, onClose, onSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4">
-        <h2 className="text-base font-semibold text-gray-800">Editar Ordem</h2>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-lg space-y-4">
+        <h2 className="text-base font-semibold text-foreground">Editar Ordem</h2>
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-destructive text-sm bg-destructive/10 rounded px-3 py-2">{error}</p>}
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="block col-span-2">
-            <span className="text-sm text-gray-600">Produto</span>
-            <select value={form.product_id} onChange={e => setForm(f => ({ ...f, product_id: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm">
+          <div className="col-span-2 space-y-1">
+            <Label>Produto</Label>
+            <select value={form.product_id} onChange={e => setForm(f => ({ ...f, product_id: e.target.value }))} className={selectCls}>
               <option value="">Selecione…</option>
               {(products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Usuário</span>
-            <select value={form.operator_id} onChange={e => setForm(f => ({ ...f, operator_id: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm">
+          <div className="space-y-1">
+            <Label>Usuário</Label>
+            <select value={form.operator_id} onChange={e => setForm(f => ({ ...f, operator_id: e.target.value }))} className={selectCls}>
               <option value="">Sem usuário</option>
               {(operators || []).map(op => <option key={op.id} value={op.id}>{op.name}</option>)}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Data</span>
-            <input type="date" value={form.production_date}
-              onChange={e => setForm(f => ({ ...f, production_date: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm" />
-          </label>
+          <div className="space-y-1">
+            <Label>Data</Label>
+            <Input type="date" value={form.production_date}
+              onChange={e => setForm(f => ({ ...f, production_date: e.target.value }))} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Status</span>
-            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm">
-              {['Pendente','Em Andamento','Concluído','Cancelado'].map(s =>
-                <option key={s}>{s}</option>
-              )}
+          <div className="space-y-1">
+            <Label>Status</Label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={selectCls}>
+              {['Pendente','Em Andamento','Concluído','Cancelado'].map(s => <option key={s}>{s}</option>)}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Planejado</span>
-            <input type="number" step="0.001" value={form.planned_qty}
-              onChange={e => setForm(f => ({ ...f, planned_qty: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm" />
-          </label>
+          <div className="space-y-1">
+            <Label>Planejado</Label>
+            <Input type="number" step="0.001" value={form.planned_qty}
+              onChange={e => setForm(f => ({ ...f, planned_qty: e.target.value }))} />
+          </div>
 
-          <label className="block">
-            <span className="text-sm text-gray-600">Produzido</span>
-            <input type="number" step="0.001" value={form.produced_qty}
-              onChange={e => setForm(f => ({ ...f, produced_qty: e.target.value }))}
-              className="mt-1 block w-full border rounded px-3 py-2 text-sm" />
-          </label>
+          <div className="space-y-1">
+            <Label>Produzido</Label>
+            <Input type="number" step="0.001" value={form.produced_qty}
+              onChange={e => setForm(f => ({ ...f, produced_qty: e.target.value }))} />
+          </div>
         </div>
 
-        <label className="block">
-          <span className="text-sm text-gray-600">Observações</span>
+        <div className="space-y-1">
+          <Label>Observações</Label>
           <textarea value={form.notes} rows={2}
             onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-            className="mt-1 block w-full border rounded px-3 py-2 text-sm resize-none" />
-        </label>
+            className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+        </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="px-4 py-1.5 rounded border text-sm text-gray-600 hover:bg-gray-50">
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="px-4 py-1.5 rounded bg-brand-600 hover:bg-brand-700 text-white text-sm disabled:opacity-50">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
