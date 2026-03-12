@@ -215,4 +215,19 @@ try {
   console.error('[migração produtos] Erro:', e.message);
 }
 
+// Tabela de log de sincronização com Fácil123
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sync_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT    NOT NULL DEFAULT (datetime('now')),
+    finished_at TEXT,
+    status     TEXT    NOT NULL DEFAULT 'running',
+    imported   INTEGER DEFAULT 0,
+    updated    INTEGER DEFAULT 0,
+    skipped    INTEGER DEFAULT 0,
+    errors     INTEGER DEFAULT 0,
+    message    TEXT
+  )
+`);
+
 module.exports = db;
