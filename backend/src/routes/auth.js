@@ -44,6 +44,16 @@ router.get('/guest-token', (req, res) => {
   res.json({ token, user: { id: 0, name: 'Convidado', role: 'guest' } });
 });
 
+// GET /api/auth/me  (autenticado) — retorna dados frescos do banco
+router.get('/me', authMiddleware, (req, res) => {
+  if (req.user.role === 'guest') {
+    return res.json({ id: 0, name: 'Convidado', email: null, role: 'guest' });
+  }
+  const user = operatorRepository.findPublicById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+  res.json(user);
+});
+
 // POST /api/auth/change-password  (autenticado)
 router.post('/change-password', authMiddleware, (req, res) => {
   const { password } = req.body;
