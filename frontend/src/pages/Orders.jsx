@@ -111,6 +111,9 @@ export default function Orders() {
       await api.post('/sync', {});
     } catch (e) {
       setSyncing(false);
+      setSyncToast({ error: e.message || 'Erro ao iniciar sincronização.' });
+      clearTimeout(toastRef.current);
+      toastRef.current = setTimeout(() => setSyncToast(null), 6000);
       return;
     }
     // Polling até sync terminar
@@ -163,17 +166,27 @@ export default function Orders() {
 
       {/* Toast de sync */}
       {syncToast && (
-        <div className="fixed bottom-5 right-5 z-50 bg-card border border-border rounded-xl shadow-xl px-4 py-3 flex items-start gap-3 max-w-xs animate-in slide-in-from-bottom-2">
-          <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${syncToast.errors > 0 ? 'bg-yellow-400' : 'bg-primary'}`} />
-          <div>
-            <p className="text-sm font-medium text-foreground">Sync Fácil123 concluído</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {syncToast.imported > 0 ? `${syncToast.imported} nova(s) ordem(s) importada(s)` : 'Nenhuma ordem nova'}
-              {syncToast.updated  > 0 ? ` · ${syncToast.updated} atualizada(s)` : ''}
-              {syncToast.errors   > 0 ? ` · ${syncToast.errors} erro(s)` : ''}
+        <div className="fixed bottom-5 right-5 z-50 bg-card border border-border rounded-xl shadow-xl px-4 py-3 flex items-start gap-3 max-w-sm animate-in slide-in-from-bottom-2">
+          <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${syncToast.error || syncToast.errors > 0 ? 'bg-red-400' : 'bg-primary'}`} />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {syncToast.error ? 'Erro no sync Fácil123' : 'Sync Fácil123 concluído'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5 break-words">
+              {syncToast.error
+                ? syncToast.error
+                : (
+                  <>
+                    {syncToast.imported > 0 ? `${syncToast.imported} nova(s) ordem(s) importada(s)` : 'Nenhuma ordem nova'}
+                    {syncToast.updated  > 0 ? ` · ${syncToast.updated} atualizada(s)` : ''}
+                    {syncToast.errors   > 0 ? ` · ${syncToast.errors} erro(s)` : ''}
+                    {syncToast.message  ? <><br /><span className="text-red-400">{syncToast.message}</span></> : null}
+                  </>
+                )
+              }
             </p>
           </div>
-          <button onClick={() => setSyncToast(null)} className="text-muted-foreground hover:text-foreground ml-1 text-base leading-none">×</button>
+          <button onClick={() => setSyncToast(null)} className="text-muted-foreground hover:text-foreground ml-1 text-base leading-none shrink-0">×</button>
         </div>
       )}
 
