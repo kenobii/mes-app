@@ -1,0 +1,37 @@
+name: PR Agent - CTO Review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  pr_agent_job:
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/'))
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+    name: CTO Review
+    steps:
+      - name: Run PR Agent
+        uses: qodo-ai/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG.MODEL: "gemini/gemini-2.0-flash"
+          CONFIG.MODEL_WEAK: "gemini/gemini-2.0-flash"
+          GEMINI.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Comportamento do agente
+          PR_REVIEWER.REQUIRE_TESTS_REVIEW: "false"
+          PR_REVIEWER.NUM_CODE_SUGGESTIONS: "5"
+          PR_REVIEWER.INLINE_CODE_COMMENTS: "true"
+          PR_DESCRIPTION.PUBLISH_LABELS: "true"
+          PR_DESCRIPTION.USE_BULLET_POINTS: "true"
+          # Idioma
+          CONFIG.RESPONSE_LANGUAGE: "pt-br"
