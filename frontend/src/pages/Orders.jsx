@@ -72,7 +72,8 @@ function fmtDateTime(iso) {
 
 export default function Orders() {
   const { isGuest, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin      = user?.role === 'admin';
+  const canConcluir  = user?.role === 'admin' || user?.role === 'conferente';
 
   const [from,     setFrom]     = useState(monthAgo);
   const [to,       setTo]       = useState(today);
@@ -288,12 +289,12 @@ export default function Orders() {
                       </Link>
                       {!isGuest && (
                         <>
-                          {o.status === 'Em Andamento' && (
+                          {canConcluir && o.status === 'Em Andamento' && (
                             <button
                               onClick={() => handleApprove(o)}
                               disabled={approving === o.id}
                               className="text-xs text-primary hover:text-primary/80 hover:underline mr-3 font-semibold disabled:opacity-50">
-                              {approving === o.id ? 'Aprovando…' : 'Aprovar'}
+                              {approving === o.id ? 'Concluindo…' : 'Concluir'}
                             </button>
                           )}
                           <button onClick={() => setEditing(o)}

@@ -103,10 +103,6 @@ function OrderDetail({ orderId, stages, onBack }) {
         started_at:  form.started_at,
         finished_at: form.finished_at,
       });
-      // Muda para "Em Andamento" apenas se ainda estiver Pendente
-      if (order?.status === 'Pendente') {
-        await api.put(`/orders/${orderId}`, { status: 'Em Andamento' });
-      }
       setForm({ stage_id: '', started_at: '', finished_at: '' });
       fetchOrder();
     } catch (e) {
@@ -120,7 +116,7 @@ function OrderDetail({ orderId, stages, onBack }) {
     setConcluding(true);
     setError(null);
     try {
-      await api.put(`/orders/${orderId}`, { status: 'Concluído' });
+      await api.put(`/orders/${orderId}`, { status: 'Em Andamento' });
       onBack();
     } catch (e) {
       setError(e.message);
@@ -227,11 +223,11 @@ function OrderDetail({ orderId, stages, onBack }) {
         </Button>
       </div>
 
-      {/* Concluir ordem — só aparece se estiver Em Andamento */}
-      {order?.status === 'Em Andamento' && (
+      {/* Marcar Em Andamento — só aparece se ainda estiver Pendente */}
+      {order?.status === 'Pendente' && (
         <div className="bg-card border border-border rounded-2xl p-5">
           <p className="text-sm text-muted-foreground mb-3">
-            Todas as etapas registradas? Finalize a ordem.
+            Etapas registradas? Marque a ordem como Em Andamento.
           </p>
           <Button
             onClick={handleConcluir}
@@ -241,7 +237,7 @@ function OrderDetail({ orderId, stages, onBack }) {
             className="w-full rounded-xl text-base py-6 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
           >
             <PackageCheck className="h-5 w-5 mr-2" />
-            {concluding ? 'Finalizando…' : 'Concluir Ordem'}
+            {concluding ? 'Salvando…' : 'Marcar Em Andamento'}
           </Button>
         </div>
       )}
