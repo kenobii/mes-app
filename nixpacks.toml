@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "chromium", "nss", "atk", "at-spi2-atk", "libdrm", "mesa", "xorg.libxcb", "libxkbcommon"]
+nixPkgs = ["nodejs_22"]
 
 [variables]
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
