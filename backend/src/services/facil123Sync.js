@@ -9,10 +9,8 @@
  *  5. Detecta cancelamentos (ordens ausentes no scrape)
  */
 
-const axios                    = require('axios');
-const { wrapper }              = require('axios-cookiejar-support');
-const { CookieJar }            = require('tough-cookie');
-const db                       = require('../db/database');
+const axios = require('axios');
+const db    = require('../db/database');
 
 const BASE_URL = 'https://app.facil123.com.br';
 
@@ -89,39 +87,65 @@ function finishLog(id, stats) {
   );
 }
 
-// ── Login no Fácil123 ──────────────────────────────────────────────────────────
+// ── Login no Fácil123 ─────────────────────────────────────────────────────────
 async function login() {
-  const jar    = new CookieJar();
-  const client = wrapper(axios.create({
-    baseURL:      BASE_URL,
-    jar,
-    withCredentials: true,
-    maxRedirects: 5,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36',
-    },
-  }));
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36';
 
-  // Extrai CSRF token da página de login (o jar guarda os cookies automaticamente)
-  const loginPage = await client.get('/usuarios/entrar');
-  const csrfMatch = loginPage.data.match(/name="authenticity_token"[^>]*value="([^"]+)"/);
+  // 1. GET login page — obtém CSRF token e session_id inicial
+  const getResp = await axios.get(`${BASE_URL}/usuarios/entrar`, {
+    headers: { 'User-Agent': UA },
+    maxRedirects: 0,
+    validateStatus: () => true,
+  });
+
+  const csrfMatch = getResp.data.match(/name="authenticity_token"[^>]*value="([^"]+)"/);
   if (!csrfMatch) throw new Error('CSRF token não encontrado na página de login');
   const csrfToken = csrfMatch[1];
   console.log(`[sync] CSRF token obtido (${csrfToken.length} chars)`);
 
-  // POST de login — o jar envia os cookies automaticamente
+  // Cookies do GET (session_id inicial)
+  const cookieMap = new Map();
+  for (const raw of getResp.headers['set-cookie'] || []) {
+    const pair = raw.split(';')[0];
+    const eq   = pair.indexOf('=');
+    if (eq > 0) cookieMap.set(pair.slice(0, eq).trim(), pair.slice(eq + 1));
+  }
+
+  const c1 = Array.from(cookieMap.entries()).map(([k,v]) => `${k}=${v}`).join('; ');
+
+  // 2. POST login — captura cookies de sessão do 303
   const params = new URLSearchParams();
   params.append('authenticity_token', csrfToken);
   params.append('user[email]',       process.env.FACIL123_EMAIL);
   params.append('user[password]',    process.env.FACIL123_SENHA);
   params.append('user[remember_me]', '1');
 
-  await client.post('/usuarios/entrar', params.toString(), {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': `${BASE_URL}/usuarios/entrar` },
+  const postResp = await axios.post(`${BASE_URL}/usuarios/entrar`, params.toString(), {
+    headers: {
+      'User-Agent':   UA,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Referer':      `${BASE_URL}/usuarios/entrar`,
+      'Cookie':       c1,
+    },
+    maxRedirects: 0,
+    validateStatus: () => true,
   });
 
+  // Acumula cookies do 303 (sobrescreve os iniciais se necessário)
+  for (const raw of postResp.headers['set-cookie'] || []) {
+    const pair = raw.split(';')[0];
+    const eq   = pair.indexOf('=');
+    if (eq > 0) cookieMap.set(pair.slice(0, eq).trim(), pair.slice(eq + 1));
+  }
+
+  const cookieStr = Array.from(cookieMap.entries()).map(([k,v]) => `${k}=${v}`).join('; ');
+
+  if (!cookieStr.includes('_facil123_session')) {
+    throw new Error('Login falhou — _facil123_session não encontrado');
+  }
+
   console.log('[sync] Login OK');
-  return { client, jar };
+  return cookieStr;
 }
 
 // ── Query GraphQL de produções ─────────────────────────────────────────────────
@@ -142,19 +166,22 @@ query getProductions($expression: String, $start_date: APIDateTime, $end_date: A
 }
 `;
 
-async function fetchProductions(client, startDate, endDate, page = 1) {
-  const resp = await client.post('/graphql', {
+async function fetchProductions(cookieStr, startDate, endDate, page = 1) {
+  const resp = await axios.post(`${BASE_URL}/graphql`, {
     operationName: 'getProductions',
     variables: { start_date: startDate, end_date: endDate, expression: '', page },
     query: GET_PRODUCTIONS_QUERY,
   }, {
     headers: {
-      'Content-Type':      'application/json',
-      'Referer':           `${BASE_URL}/#/producoes`,
-      'X-Requested-With':  'XMLHttpRequest',
+      'Content-Type':     'application/json',
+      'Cookie':            cookieStr,
+      'Referer':          `${BASE_URL}/#/producoes`,
+      'X-Requested-With': 'XMLHttpRequest',
     },
+    validateStatus: () => true,
   });
 
+  if (resp.status !== 200) throw new Error(`GraphQL HTTP ${resp.status}`);
   if (resp.data.errors) throw new Error(resp.data.errors[0]?.message || 'GraphQL error');
   return resp.data.data?.productions || [];
 }
@@ -186,7 +213,7 @@ async function runSync() {
   console.log(`[sync] Iniciando sync Fácil123 (log #${logId})...`);
 
   try {
-    const { client } = await login();
+    const cookieStr = await login();
     const productMap  = buildProductMap();
 
     const allRows = [];
@@ -194,7 +221,7 @@ async function runSync() {
     for (const { start, end } of monthRanges(IMPORT_FROM_DATE)) {
       let page = 1;
       while (true) {
-        const rows = await fetchProductions(client, start, end, page);
+        const rows = await fetchProductions(cookieStr, start, end, page);
         console.log(`[sync] ${start.slice(0,7)} página ${page}: ${rows.length} produções`);
         if (!rows.length) break;
         allRows.push(...rows);
