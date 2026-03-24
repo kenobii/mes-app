@@ -253,13 +253,11 @@ function OrderDetail({ orderId, stages, onBack }) {
 export default function Tablet() {
   const { user, logout } = useAuth();
 
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(toLocalISO(new Date()));
   const [selectedId,   setSelectedId]   = useState(null);
   const [syncing,      setSyncing]       = useState(false);
 
-  const ordersUrl = selectedDate
-    ? `/orders?status=Pendente,Em+Andamento&date_from=${selectedDate}&date_to=${selectedDate}`
-    : '/orders?status=Pendente,Em+Andamento';
+  const ordersUrl = `/orders?status=Pendente,Em+Andamento&date_from=${selectedDate}&date_to=${selectedDate}`;
 
   const { data: allOrders, refetch } = useApi(ordersUrl);
   const { data: stages }             = useApi('/stages?legacy=false');
@@ -361,9 +359,9 @@ export default function Tablet() {
 
               <div className="flex flex-col items-center gap-1 flex-1">
                 <span className="text-base font-semibold text-foreground">
-                  {selectedDate ? fmtDate(selectedDate) : 'Todos os dias'}
+                  {fmtDate(selectedDate)}
                 </span>
-                {!isToday && selectedDate && (
+                {!isToday && (
                   <button
                     onClick={() => setSelectedDate(today)}
                     className="text-xs text-primary underline"
@@ -381,17 +379,10 @@ export default function Tablet() {
               </button>
             </div>
 
-            {/* Filtro Todos */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center mb-3">
               <h1 className="text-base font-semibold text-foreground">
                 Ordens Ativas <Badge variant="secondary" className="ml-1">{orders.length}</Badge>
               </h1>
-              <button
-                onClick={() => setSelectedDate(selectedDate ? null : today)}
-                className="text-xs text-muted-foreground underline"
-              >
-                {selectedDate ? 'Ver todos os dias' : 'Filtrar por dia'}
-              </button>
             </div>
 
             <OrderList orders={orders} onSelect={handleSelect} />
