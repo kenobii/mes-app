@@ -138,7 +138,14 @@ async function scrapeProducoes() {
       '--disable-dev-shm-usage',
       '--disable-gpu',
       '--no-zygote',
+      '--single-process',
       '--disable-accelerated-2d-canvas',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--no-first-run',
+      '--mute-audio',
     ],
   });
 
