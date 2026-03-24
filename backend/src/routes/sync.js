@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { adminMiddleware } = require('../middleware/auth');
+const { producaoMiddleware } = require('../middleware/auth');
 const { runSync, getLastSync } = require('../services/facil123Sync');
 
 const router = Router();
@@ -11,8 +11,8 @@ router.get('/', (req, res) => {
   res.json({ running: syncRunning, lastSync: getLastSync() });
 });
 
-// POST /api/sync — dispara sync manual (admin)
-router.post('/', adminMiddleware, async (req, res) => {
+// POST /api/sync — dispara sync manual (admin ou producao)
+router.post('/', producaoMiddleware, async (req, res) => {
   if (syncRunning) {
     return res.status(409).json({ error: 'Sincronização já em andamento.' });
   }

@@ -291,17 +291,17 @@ function TabUsuarios({ operators, refetch, onError, me }) {
     finally { setResetting(null); }
   }
 
-  const ROLE_CYCLE = { admin: 'user', user: 'producao', producao: 'admin' };
-  const ROLE_LABEL = { admin: 'Admin', user: 'Usuário', producao: 'Produção' };
+  const ROLE_CYCLE = { admin: 'conferente', conferente: 'producao', producao: 'admin' };
+  const ROLE_LABEL = { admin: 'Admin', conferente: 'Conferente', producao: 'Produção' };
   const ROLE_CLASS = {
-    admin:    'bg-primary/20 text-primary hover:bg-primary/30',
-    user:     'bg-muted text-muted-foreground hover:bg-muted/80',
-    producao: 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30',
+    admin:      'bg-primary/20 text-primary hover:bg-primary/30',
+    conferente: 'bg-muted text-muted-foreground hover:bg-muted/80',
+    producao:   'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30',
   };
 
   async function toggleRole(op) {
     if (op.id === me?.id) return;
-    const next = ROLE_CYCLE[op.role] ?? 'user';
+    const next = ROLE_CYCLE[op.role] ?? 'conferente';
     try { await api.put(`/operators/${op.id}`, { role: next }); refetch(); }
     catch (e) { onError(e.message); }
   }
@@ -375,9 +375,9 @@ function TabUsuarios({ operators, refetch, onError, me }) {
                         <button onClick={() => toggleRole(op)} disabled={isSelf}
                           title={isSelf ? 'Não é possível alterar seu próprio perfil' : `Clique para alternar perfil`}
                           className={`text-xs px-2.5 py-0.5 rounded-full font-semibold transition-colors
-                            ${ROLE_CLASS[op.role] ?? ROLE_CLASS.user}
+                            ${ROLE_CLASS[op.role] ?? ROLE_CLASS.conferente}
                             ${isSelf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-                          {ROLE_LABEL[op.role] ?? 'Usuário'}
+                          {ROLE_LABEL[op.role] ?? 'Conferente'}
                         </button>
                       </Td>
                       <Td className="text-center">

@@ -27,4 +27,11 @@ function requireNonGuest(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, adminMiddleware, requireNonGuest, SECRET };
+// Permite admin e producao
+function producaoMiddleware(req, res, next) {
+  if (!['admin', 'producao'].includes(req.user?.role))
+    return res.status(403).json({ error: 'Acesso restrito.' });
+  next();
+}
+
+module.exports = { authMiddleware, adminMiddleware, requireNonGuest, producaoMiddleware, SECRET };

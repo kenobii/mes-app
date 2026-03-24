@@ -38,7 +38,7 @@ router.post('/', adminMiddleware, async (req, res) => {
 router.put('/:id', adminMiddleware, (req, res) => {
   const { name, active, external_id, role } = req.body;
   const target = operatorRepository.findRoleById(req.params.id);
-  const VALID_ROLES = ['admin', 'user', 'producao'];
+  const VALID_ROLES = ['admin', 'conferente', 'producao'];
   const newRole = VALID_ROLES.includes(role) ? role : null;
   if (newRole !== 'admin' && target?.role === 'admin' && Number(req.params.id) === req.user.id)
     return res.status(400).json({ error: 'Você não pode remover sua própria permissão de admin.' });

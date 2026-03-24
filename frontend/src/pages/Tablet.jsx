@@ -6,7 +6,14 @@ import { Button }  from '@/components/ui/button';
 import { Input }   from '@/components/ui/input';
 import { Label }   from '@/components/ui/label';
 import { Badge }   from '@/components/ui/badge';
-import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock } from 'lucide-react';
+import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock, PackageCheck, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+
+function toLocalISO(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function fmtDate(str) {
   if (!str) return '—';
@@ -64,11 +71,12 @@ function OrderList({ orders, onSelect }) {
 
 // ─── Tela: Detalhe da ordem + registrar etapas ────────────────────────────────
 function OrderDetail({ orderId, stages, onBack }) {
-  const [order,   setOrder]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [form,    setForm]    = useState({ stage_id: '', started_at: '', finished_at: '' });
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState(null);
+  const [order,      setOrder]      = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [form,       setForm]       = useState({ stage_id: '', started_at: '', finished_at: '' });
+  const [saving,     setSaving]     = useState(false);
+  const [concluding, setConcluding] = useState(false);
+  const [error,      setError]      = useState(null);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -105,6 +113,18 @@ function OrderDetail({ orderId, stages, onBack }) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleConcluir() {
+    setConcluding(true);
+    setError(null);
+    try {
+      await api.put(`/orders/${orderId}`, { status: 'Concluído' });
+      onBack();
+    } catch (e) {
+      setError(e.message);
+      setConcluding(false);
     }
   }
 
@@ -206,6 +226,25 @@ function OrderDetail({ orderId, stages, onBack }) {
           {saving ? 'Salvando…' : 'Registrar Etapa'}
         </Button>
       </div>
+
+      {/* Concluir ordem — só aparece se estiver Em Andamento */}
+      {order?.status === 'Em Andamento' && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-sm text-muted-foreground mb-3">
+            Todas as etapas registradas? Finalize a ordem.
+          </p>
+          <Button
+            onClick={handleConcluir}
+            disabled={concluding}
+            size="lg"
+            variant="outline"
+            className="w-full rounded-xl text-base py-6 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+          >
+            <PackageCheck className="h-5 w-5 mr-2" />
+            {concluding ? 'Finalizando…' : 'Concluir Ordem'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -213,20 +252,56 @@ function OrderDetail({ orderId, stages, onBack }) {
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function Tablet() {
   const { user, logout } = useAuth();
-  const { data: allOrders, refetch } = useApi('/orders?status=Pendente,Em+Andamento');
-  const { data: stages }             = useApi('/stages?legacy=false');
 
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedId,   setSelectedId]   = useState(null);
+  const [syncing,      setSyncing]       = useState(false);
+
+  const ordersUrl = selectedDate
+    ? `/orders?status=Pendente,Em+Andamento&date_from=${selectedDate}&date_to=${selectedDate}`
+    : '/orders?status=Pendente,Em+Andamento';
+
+  const { data: allOrders, refetch } = useApi(ordersUrl);
+  const { data: stages }             = useApi('/stages?legacy=false');
 
   const orders = allOrders || [];
 
-  function handleSelect(order) {
-    setSelectedId(order.id);
-  }
+  function handleSelect(order) { setSelectedId(order.id); }
 
   function handleBack() {
     setSelectedId(null);
     refetch?.();
+  }
+
+  function shiftDay(delta) {
+    setSelectedDate(prev => {
+      const base = prev ?? toLocalISO(new Date());
+      const d = new Date(base + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      return toLocalISO(d);
+    });
+  }
+
+  const today = toLocalISO(new Date());
+  const isToday = selectedDate === today;
+
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await api.post('/sync', {});
+      // Polling até terminar
+      const poll = setInterval(async () => {
+        const d = await api.get('/sync');
+        if (!d.running) {
+          clearInterval(poll);
+          setSyncing(false);
+          refetch?.();
+        }
+      }, 2000);
+    } catch {
+      setSyncing(false);
+    }
   }
 
   return (
@@ -250,9 +325,19 @@ export default function Tablet() {
             <p className="text-xs text-muted-foreground mt-0.5">{user?.name}</p>
           </div>
         </div>
-        <button onClick={logout} className="text-muted-foreground p-2">
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleSync}
+            disabled={syncing || !!selectedId}
+            className="text-muted-foreground p-2 disabled:opacity-40"
+            title="Sincronizar Fácil123"
+          >
+            <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
+          <button onClick={logout} className="text-muted-foreground p-2">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Conteúdo */}
@@ -265,10 +350,50 @@ export default function Tablet() {
           />
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold text-foreground">Ordens Ativas</h1>
-              <Badge variant="secondary">{orders.length}</Badge>
+            {/* Seletor de dia */}
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <button
+                onClick={() => shiftDay(-1)}
+                className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <div className="flex flex-col items-center gap-1 flex-1">
+                <span className="text-base font-semibold text-foreground">
+                  {selectedDate ? fmtDate(selectedDate) : 'Todos os dias'}
+                </span>
+                {!isToday && selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate(today)}
+                    className="text-xs text-primary underline"
+                  >
+                    Ir para hoje
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => shiftDay(1)}
+                className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
+
+            {/* Filtro Todos */}
+            <div className="flex items-center justify-between mb-3">
+              <h1 className="text-base font-semibold text-foreground">
+                Ordens Ativas <Badge variant="secondary" className="ml-1">{orders.length}</Badge>
+              </h1>
+              <button
+                onClick={() => setSelectedDate(selectedDate ? null : today)}
+                className="text-xs text-muted-foreground underline"
+              >
+                {selectedDate ? 'Ver todos os dias' : 'Filtrar por dia'}
+              </button>
+            </div>
+
             <OrderList orders={orders} onSelect={handleSelect} />
           </>
         )}
