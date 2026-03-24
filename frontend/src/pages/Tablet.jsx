@@ -6,7 +6,7 @@ import { Button }  from '@/components/ui/button';
 import { Input }   from '@/components/ui/input';
 import { Label }   from '@/components/ui/label';
 import { Badge }   from '@/components/ui/badge';
-import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock } from 'lucide-react';
+import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock, PackageCheck } from 'lucide-react';
 
 function fmtDate(str) {
   if (!str) return '—';
@@ -64,11 +64,12 @@ function OrderList({ orders, onSelect }) {
 
 // ─── Tela: Detalhe da ordem + registrar etapas ────────────────────────────────
 function OrderDetail({ orderId, stages, onBack }) {
-  const [order,   setOrder]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [form,    setForm]    = useState({ stage_id: '', started_at: '', finished_at: '' });
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState(null);
+  const [order,      setOrder]      = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [form,       setForm]       = useState({ stage_id: '', started_at: '', finished_at: '' });
+  const [saving,     setSaving]     = useState(false);
+  const [concluding, setConcluding] = useState(false);
+  const [error,      setError]      = useState(null);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
@@ -105,6 +106,18 @@ function OrderDetail({ orderId, stages, onBack }) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleConcluir() {
+    setConcluding(true);
+    setError(null);
+    try {
+      await api.put(`/orders/${orderId}`, { status: 'Concluído' });
+      onBack();
+    } catch (e) {
+      setError(e.message);
+      setConcluding(false);
     }
   }
 
@@ -206,6 +219,25 @@ function OrderDetail({ orderId, stages, onBack }) {
           {saving ? 'Salvando…' : 'Registrar Etapa'}
         </Button>
       </div>
+
+      {/* Concluir ordem — só aparece se estiver Em Andamento */}
+      {order?.status === 'Em Andamento' && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-sm text-muted-foreground mb-3">
+            Todas as etapas registradas? Finalize a ordem.
+          </p>
+          <Button
+            onClick={handleConcluir}
+            disabled={concluding}
+            size="lg"
+            variant="outline"
+            className="w-full rounded-xl text-base py-6 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+          >
+            <PackageCheck className="h-5 w-5 mr-2" />
+            {concluding ? 'Finalizando…' : 'Concluir Ordem'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -261,8 +261,34 @@ async function runSync() {
       }
     }
 
-    stats.message = `Total extraído: ${rows.length}`;
-    console.log(`[sync] Concluído — importados: ${stats.imported}, atualizados: ${stats.updated}, ignorados: ${stats.skipped}, erros: ${stats.errors}`);
+    // Detecta cancelamentos: ordens Fácil123 ativas que não apareceram no scrape
+    const activeExternalIds = new Set(
+      rows
+        .filter(r => r.externalId && parseDate(r.productionDate) >= IMPORT_FROM_DATE)
+        .map(r => r.externalId)
+    );
+    const dbActiveFacil123 = db.prepare(`
+      SELECT id, external_id FROM production_orders
+      WHERE source_sheet = 'facil123'
+        AND status NOT IN ('Cancelado', 'Concluído')
+        AND production_date >= ?
+    `).all(IMPORT_FROM_DATE);
+
+    let cancelled = 0;
+    const stmtCancel = db.prepare(`
+      UPDATE production_orders SET status = 'Cancelado', updated_at = datetime('now') WHERE id = ?
+    `);
+    for (const order of dbActiveFacil123) {
+      if (!activeExternalIds.has(order.external_id)) {
+        stmtCancel.run(order.id);
+        cancelled++;
+        console.log(`[sync] Ordem #${order.id} (ext: ${order.external_id}) cancelada — ausente no Fácil123`);
+      }
+    }
+
+    stats.cancelled = cancelled;
+    stats.message = `Total extraído: ${rows.length}${cancelled ? `, cancelados: ${cancelled}` : ''}`;
+    console.log(`[sync] Concluído — importados: ${stats.imported}, atualizados: ${stats.updated}, ignorados: ${stats.skipped}, cancelados: ${cancelled}, erros: ${stats.errors}`);
 
   } catch (e) {
     stats.errors++;
