@@ -138,7 +138,6 @@ async function scrapeProducoes() {
       '--disable-dev-shm-usage',
       '--disable-gpu',
       '--no-zygote',
-      '--single-process',
       '--disable-accelerated-2d-canvas',
     ],
   });

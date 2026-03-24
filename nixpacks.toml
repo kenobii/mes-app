@@ -1,5 +1,22 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "chromium", "nss", "atk", "at-spi2-atk", "libdrm", "mesa", "xorg.libxcb", "libxkbcommon"]
+nixPkgs = [
+  "nodejs_22",
+  "glib", "nss", "nspr", "dbus", "atk", "cups",
+  "libdrm", "mesa", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage",
+  "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb",
+  "libxkbcommon", "pango", "cairo", "alsa-lib", "at-spi2-atk", "at-spi2-core",
+  "expat", "libglvnd"
+]
+
+[phases.install]
+cmds = [
+  "npm ci --prefix backend --omit=dev",
+  "npm ci --prefix frontend --omit=dev",
+  "cd backend && npx playwright install chromium"
+]
+
+[phases.build]
+cmds = ["npm run build --prefix frontend"]
 
 [variables]
-PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+PLAYWRIGHT_BROWSERS_PATH = "/root/.cache/ms-playwright"
