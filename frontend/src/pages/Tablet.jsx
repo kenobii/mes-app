@@ -6,7 +6,7 @@ import { Button }  from '@/components/ui/button';
 import { Input }   from '@/components/ui/input';
 import { Label }   from '@/components/ui/label';
 import { Badge }   from '@/components/ui/badge';
-import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock, PackageCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, ChefHat, ArrowLeft, CheckCircle2, Clock, PackageCheck, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 function toLocalISO(date) {
   const y = date.getFullYear();
@@ -255,6 +255,7 @@ export default function Tablet() {
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedId,   setSelectedId]   = useState(null);
+  const [syncing,      setSyncing]       = useState(false);
 
   const ordersUrl = selectedDate
     ? `/orders?status=Pendente,Em+Andamento&date_from=${selectedDate}&date_to=${selectedDate}`
@@ -284,6 +285,25 @@ export default function Tablet() {
   const today = toLocalISO(new Date());
   const isToday = selectedDate === today;
 
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await api.post('/sync', {});
+      // Polling até terminar
+      const poll = setInterval(async () => {
+        const d = await api.get('/sync');
+        if (!d.running) {
+          clearInterval(poll);
+          setSyncing(false);
+          refetch?.();
+        }
+      }, 2000);
+    } catch {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -305,9 +325,19 @@ export default function Tablet() {
             <p className="text-xs text-muted-foreground mt-0.5">{user?.name}</p>
           </div>
         </div>
-        <button onClick={logout} className="text-muted-foreground p-2">
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleSync}
+            disabled={syncing || !!selectedId}
+            className="text-muted-foreground p-2 disabled:opacity-40"
+            title="Sincronizar Fácil123"
+          >
+            <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
+          <button onClick={logout} className="text-muted-foreground p-2">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Conteúdo */}
