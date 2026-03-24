@@ -63,15 +63,20 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`MES API rodando em http://localhost:${PORT} [${isProd ? 'produção' : 'desenvolvimento'}]`);
 
-  // Cron: sync Fácil123 diariamente às 23h (horário do servidor)
+  // Cron: sync Fácil123 a cada hora + ao iniciar
   if (process.env.FACIL123_EMAIL && process.env.FACIL123_SENHA) {
     const cron = require('node-cron');
     const { runSync } = require('./services/facil123Sync');
-    cron.schedule('0 23 * * *', () => {
-      console.log('[cron] Iniciando sync diário Fácil123...');
+    cron.schedule('0 * * * *', () => {
+      console.log('[cron] Iniciando sync horário Fácil123...');
       runSync().catch(e => console.error('[cron] Erro no sync:', e.message));
     });
-    console.log('[cron] Sync Fácil123 agendado para 23h diariamente.');
+    console.log('[cron] Sync Fácil123 agendado a cada hora.');
+    // Sync imediato ao iniciar (aguarda 10s para o servidor estabilizar)
+    setTimeout(() => {
+      console.log('[cron] Sync inicial ao subir o servidor...');
+      runSync().catch(e => console.error('[cron] Erro no sync inicial:', e.message));
+    }, 10000);
   } else {
     console.log('[cron] FACIL123_EMAIL/SENHA não configurados — sync desativado.');
   }
