@@ -16,7 +16,7 @@ const LOGIN_URL     = `${FACIL123_URL}/usuarios/entrar`;
 const PRODUCOES_URL = `${FACIL123_URL}/#/producoes`;
 
 // Data de corte: só importa ordens a partir desta data
-const IMPORT_FROM_DATE = '2026-03-05';
+const IMPORT_FROM_DATE = '2026-03-23';
 
 // Chromium: usa variável de ambiente (Railway/Nixpacks) ou deixa Playwright encontrar o próprio
 function getChromiumPath() {

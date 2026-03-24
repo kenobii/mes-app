@@ -20,7 +20,7 @@ router.post('/login', (req, res) => {
   if (!valid)
     return res.status(401).json({ error: 'Credenciais inválidas.' });
 
-  const role = user.role || 'user';
+  const role = user.role || 'conferente';
   const token = jwt.sign(
     { id: user.id, name: user.name, email: user.email, role },
     SECRET,
