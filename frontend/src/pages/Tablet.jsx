@@ -253,7 +253,7 @@ function OrderDetail({ orderId, stages, onBack }) {
 export default function Tablet() {
   const { user, logout } = useAuth();
 
-  const [selectedDate, setSelectedDate] = useState(() => toLocalISO(new Date()));
+  const [selectedDate, setSelectedDate] = useState(null);
   const [selectedId,   setSelectedId]   = useState(null);
 
   const ordersUrl = selectedDate
@@ -274,7 +274,8 @@ export default function Tablet() {
 
   function shiftDay(delta) {
     setSelectedDate(prev => {
-      const d = new Date(prev + 'T00:00:00');
+      const base = prev ?? toLocalISO(new Date());
+      const d = new Date(base + 'T00:00:00');
       d.setDate(d.getDate() + delta);
       return toLocalISO(d);
     });
