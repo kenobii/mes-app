@@ -34,7 +34,11 @@ for (const sql of authCols) {
 
 // Migração de role — idempotente
 try { db.exec("ALTER TABLE operators ADD COLUMN role TEXT DEFAULT 'conferente'"); } catch (_) {}
-db.prepare("UPDATE operators SET role = 'admin' WHERE name = 'Ygor' AND (role IS NULL OR role != 'admin')").run();
+// Garante que exista pelo menos um admin se INITIAL_ADMIN_EMAIL estiver configurado
+if (process.env.INITIAL_ADMIN_EMAIL) {
+  db.prepare("UPDATE operators SET role = 'admin' WHERE email = ? AND (role IS NULL OR role != 'admin')")
+    .run(process.env.INITIAL_ADMIN_EMAIL);
+}
 // Renomeia role 'auxiliar' para 'producao' (refatoração de nomenclatura)
 db.prepare("UPDATE operators SET role = 'producao' WHERE role = 'auxiliar'").run();
 // Renomeia role 'user' para 'conferente' (refatoração de nomenclatura)
