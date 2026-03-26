@@ -70,7 +70,8 @@ router.post('/:id/reset-password', adminMiddleware, async (req, res) => {
     });
   }
 
-  res.json({ emailSent });
+  // Retorna a senha temporária apenas quando o email falha — somente admins chegam aqui
+  res.json({ emailSent, tempPassword: emailSent ? null : tempPassword });
 });
 
 module.exports = router;
