@@ -2,7 +2,8 @@ const { Router } = require('express');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const operatorRepository = require('../repositories/operatorRepository');
-const { authMiddleware, SECRET } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
+const { JWT_SECRET } = require('../config');
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post('/login', (req, res) => {
   const role = user.role || 'conferente';
   const token = jwt.sign(
     { id: user.id, name: user.name, email: user.email, role },
-    SECRET,
+    JWT_SECRET,
     { expiresIn: '8h' }
   );
 
@@ -38,7 +39,7 @@ router.post('/login', (req, res) => {
 router.get('/guest-token', (req, res) => {
   const token = jwt.sign(
     { id: 0, name: 'Convidado', role: 'guest' },
-    SECRET,
+    JWT_SECRET,
     { expiresIn: '24h' }
   );
   res.json({ token, user: { id: 0, name: 'Convidado', role: 'guest' } });

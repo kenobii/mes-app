@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
-
-const SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production';
+const { JWT_SECRET } = require('../config');
 
 function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
@@ -8,7 +7,7 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ error: 'Token não fornecido.' });
   }
   try {
-    req.user = jwt.verify(header.slice(7), SECRET);
+    req.user = jwt.verify(header.slice(7), JWT_SECRET);
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido ou expirado.' });
@@ -34,4 +33,4 @@ function producaoMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, adminMiddleware, requireNonGuest, producaoMiddleware, SECRET };
+module.exports = { authMiddleware, adminMiddleware, requireNonGuest, producaoMiddleware };
