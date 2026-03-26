@@ -286,7 +286,7 @@ function TabUsuarios({ operators, refetch, onError, me }) {
       const res = await api.post(`/operators/${op.id}/reset-password`, {});
       if (res.emailSent) setResetMsg({ opId: op.id, text: `Senha enviada para ${op.email}`, isPassword: false });
       else if (res.tempPassword) setResetMsg({ opId: op.id, text: `Senha temporária: ${res.tempPassword}`, isPassword: true });
-      else setResetMsg({ opId: op.id, text: 'Senha redefinida (email não configurado)', isPassword: false });
+      else setResetMsg({ opId: op.id, text: 'Senha redefinida. Configure o e-mail para envio automático.', isPassword: false });
     } catch (e) { onError(e.message); }
     finally { setResetting(null); }
   }

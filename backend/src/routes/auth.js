@@ -1,13 +1,33 @@
 const { Router } = require('express');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const operatorRepository = require('../repositories/operatorRepository');
-const { authMiddleware, SECRET } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
+const { JWT_SECRET } = require('../config');
 
 const router = Router();
 
+// Limita tentativas de login: máximo 10 por IP a cada 15 minutos
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+});
+
+// Limita geração de guest-token: máximo 30 por IP a cada hora
+const guestTokenLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite de tokens de convidado atingido. Aguarde.' },
+});
+
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: 'Email e senha são obrigatórios.' });
@@ -23,7 +43,7 @@ router.post('/login', (req, res) => {
   const role = user.role || 'conferente';
   const token = jwt.sign(
     { id: user.id, name: user.name, email: user.email, role },
-    SECRET,
+    JWT_SECRET,
     { expiresIn: '8h' }
   );
 
@@ -35,10 +55,10 @@ router.post('/login', (req, res) => {
 });
 
 // GET /api/auth/guest-token  (público)
-router.get('/guest-token', (req, res) => {
+router.get('/guest-token', guestTokenLimiter, (req, res) => {
   const token = jwt.sign(
     { id: 0, name: 'Convidado', role: 'guest' },
-    SECRET,
+    JWT_SECRET,
     { expiresIn: '24h' }
   );
   res.json({ token, user: { id: 0, name: 'Convidado', role: 'guest' } });

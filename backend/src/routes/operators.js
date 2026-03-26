@@ -6,8 +6,13 @@ const { adminMiddleware } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/', (_req, res) => {
-  res.json(operatorRepository.findAll());
+router.get('/', (req, res) => {
+  const all = operatorRepository.findAll();
+  // Não-admin recebe apenas id+name (suficiente para selects de filtro/formulário)
+  if (req.user?.role !== 'admin') {
+    return res.json(all.map(({ id, name, active }) => ({ id, name, active })));
+  }
+  res.json(all);
 });
 
 router.post('/', adminMiddleware, async (req, res) => {
@@ -65,6 +70,7 @@ router.post('/:id/reset-password', adminMiddleware, async (req, res) => {
     });
   }
 
+  // Retorna a senha temporária apenas quando o email falha — somente admins chegam aqui
   res.json({ emailSent, tempPassword: emailSent ? null : tempPassword });
 });
 
