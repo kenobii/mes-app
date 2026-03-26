@@ -65,7 +65,7 @@ router.post('/:id/reset-password', adminMiddleware, async (req, res) => {
     });
   }
 
-  res.json({ emailSent, tempPassword: emailSent ? null : tempPassword });
+  res.json({ emailSent });
 });
 
 module.exports = router;
