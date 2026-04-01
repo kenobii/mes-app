@@ -30,6 +30,15 @@ app.use(cors({
 
 app.use(express.json());
 
+// Permite embedding via iframe no portal unificado
+app.use((_req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors 'self' https://gestao-supren.vercel.app https://app.suprenveg.com.br"
+  );
+  next();
+});
+
 // Rotas públicas
 app.use('/api/auth', authRouter);
 
