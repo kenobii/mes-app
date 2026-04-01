@@ -31,11 +31,10 @@ app.use(cors({
 app.use(express.json());
 
 // Permite embedding via iframe no portal unificado
+const FRAME_ANCESTORS_CSP = "frame-ancestors 'self' https://gestao-supren.vercel.app https://app.suprenveg.com.br";
 app.use((_req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "frame-ancestors 'self' https://gestao-supren.vercel.app https://app.suprenveg.com.br"
-  );
+  res.setHeader('Content-Security-Policy', FRAME_ANCESTORS_CSP);
+  res.removeHeader('X-Frame-Options');
   next();
 });
 
@@ -57,8 +56,17 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISO
 // __dirname = mes-app/backend/src → ../../frontend/dist = mes-app/frontend/dist
 const DIST = path.join(__dirname, '..', '..', 'frontend', 'dist');
 if (fs.existsSync(DIST)) {
-  app.use(express.static(DIST));
-  app.get('*', (_, res) => res.sendFile(path.join(DIST, 'index.html')));
+  app.use(express.static(DIST, {
+    setHeaders: (res) => {
+      res.setHeader('Content-Security-Policy', FRAME_ANCESTORS_CSP);
+      res.removeHeader('X-Frame-Options');
+    },
+  }));
+  app.get('*', (_, res) => {
+    res.setHeader('Content-Security-Policy', FRAME_ANCESTORS_CSP);
+    res.removeHeader('X-Frame-Options');
+    res.sendFile(path.join(DIST, 'index.html'));
+  });
 } else if (isProd) {
   console.warn(`AVISO: diretório de build não encontrado em ${DIST}`);
 }
