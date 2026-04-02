@@ -93,9 +93,12 @@ function EditRow({ data, orders, stages, onChange, onSave, onCancel, saving, err
             className="w-full border border-border rounded-lg px-2 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Produto…</option>
-            {orders.map(o => (
-              <option key={o.id} value={o.id}>{o.product_name}</option>
-            ))}
+            {orders.map(o => {
+              const date = o.production_date ? fmtDate(o.production_date) : null;
+              const qty  = o.planned_qty     ? `${o.planned_qty}${o.unit || 'kg'}` : null;
+              const label = [o.product_name, date, qty].filter(Boolean).join(' — ');
+              return <option key={o.id} value={o.id}>{label}</option>;
+            })}
           </select>
           <input
             type="date"
