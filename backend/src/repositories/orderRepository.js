@@ -144,6 +144,47 @@ const orderRepository = {
     `).get(result.lastInsertRowid);
   },
 
+  findStepsByDate: (date) => {
+    return db.prepare(`
+      SELECT s.id, s.order_id, s.stage_id, s.started_at, s.finished_at,
+             s.gross_time_minutes, s.net_time_minutes, s.notes,
+             st.name AS stage_name,
+             o.product_id, p.name AS product_name
+      FROM production_steps s
+      JOIN stages st ON st.id = s.stage_id
+      JOIN production_orders o ON o.id = s.order_id
+      JOIN products p ON p.id = o.product_id
+      WHERE o.production_date = ?
+      ORDER BY COALESCE(s.started_at, s.created_at) ASC, s.id ASC
+    `).all(date);
+  },
+
+  updateStep: (stepId, { stage_id, started_at, finished_at }) => {
+    const gross = (started_at && finished_at) ? calcMinutes(started_at, finished_at) : null;
+    db.prepare(`
+      UPDATE production_steps SET
+        stage_id           = COALESCE(?, stage_id),
+        started_at         = ?,
+        finished_at        = ?,
+        gross_time_minutes = ?,
+        net_time_minutes   = ?
+      WHERE id = ?
+    `).run(stage_id ?? null, started_at ?? null, finished_at ?? null, gross, gross, stepId);
+    return db.prepare(`
+      SELECT s.*, st.name AS stage_name, o.product_id, p.name AS product_name
+      FROM production_steps s
+      JOIN stages st ON st.id = s.stage_id
+      JOIN production_orders o ON o.id = s.order_id
+      JOIN products p ON p.id = o.product_id
+      WHERE s.id = ?
+    `).get(stepId);
+  },
+
+  deleteStep: (stepId) => {
+    db.prepare(`DELETE FROM production_pauses WHERE step_id = ?`).run(stepId);
+    db.prepare(`DELETE FROM production_steps WHERE id = ?`).run(stepId);
+  },
+
   addPause: (stepId, { paused_at, resumed_at, reason }) => {
     const nextIdx = (db.prepare(
       `SELECT COUNT(*) as n FROM production_pauses WHERE step_id = ?`

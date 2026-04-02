@@ -3,6 +3,27 @@ const orderRepository = require('../repositories/orderRepository');
 const { requireNonGuest } = require('../middleware/auth');
 const router = Router();
 
+// GET /steps?date=YYYY-MM-DD — todos os steps do dia (visão planilha)
+router.get('/steps', (req, res) => {
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'date é obrigatório' });
+  res.json(orderRepository.findStepsByDate(date));
+});
+
+// PUT /steps/:stepId — editar step
+router.put('/steps/:stepId', requireNonGuest, (req, res) => {
+  const { stage_id, started_at, finished_at } = req.body;
+  const updated = orderRepository.updateStep(req.params.stepId, { stage_id, started_at, finished_at });
+  if (!updated) return res.status(404).json({ error: 'Step não encontrado' });
+  res.json(updated);
+});
+
+// DELETE /steps/:stepId — excluir step
+router.delete('/steps/:stepId', requireNonGuest, (req, res) => {
+  orderRepository.deleteStep(req.params.stepId);
+  res.json({ ok: true });
+});
+
 router.get('/', (req, res) => {
   const { date_from, date_to, product_id, operator_id, status } = req.query;
   res.json(orderRepository.findAll({ date_from, date_to, product_id, operator_id, status }));
