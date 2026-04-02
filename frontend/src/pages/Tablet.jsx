@@ -186,6 +186,7 @@ export default function Tablet() {
   const [stages,       setStages]       = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [syncing,      setSyncing]      = useState(false);
+  const [fetchError,   setFetchError]   = useState(null);
 
   // Estado do formulário de nova linha
   const [newRow,    setNewRow]    = useState(null);   // null = oculto
@@ -200,11 +201,13 @@ export default function Tablet() {
   const [deletingId,  setDeletingId]  = useState(null);
 
   const refreshRef = useRef(null);
+  const syncPollRef = useRef(null);
 
   // ── Buscar dados ────────────────────────────────────────────────────────────
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const [stepsData, ordersData] = await Promise.all([
         api.get(`/orders/steps?date=${selectedDate}`),
@@ -213,6 +216,8 @@ export default function Tablet() {
       ]);
       setSteps(stepsData);
       setOrders(ordersData);
+    } catch (e) {
+      setFetchError('Erro ao carregar dados. Verifique a conexão.');
     } finally {
       setLoading(false);
     }
@@ -262,6 +267,7 @@ export default function Tablet() {
   async function saveNewRow() {
     if (!newRow.order_id) return setNewError('Selecione o produto.');
     if (!newRow.stage_id) return setNewError('Selecione a etapa.');
+    if (!newRow.date) return setNewError('Informe a data.');
     if (!newRow.started_at) return setNewError('Informe o horário de início.');
 
     setNewSaving(true);
@@ -298,6 +304,7 @@ export default function Tablet() {
 
   async function saveEdit() {
     if (!editData.stage_id) return setEditError('Selecione a etapa.');
+    if (!editData.date) return setEditError('Informe a data.');
     if (!editData.started_at) return setEditError('Informe o horário de início.');
 
     setEditSaving(true);
@@ -332,17 +339,25 @@ export default function Tablet() {
 
   // ── Sync ────────────────────────────────────────────────────────────────────
 
+  // Limpa o poll do sync ao desmontar
+  useEffect(() => () => clearInterval(syncPollRef.current), []);
+
   async function handleSync() {
     if (syncing) return;
     setSyncing(true);
     try {
       await api.post('/sync', {});
-      const poll = setInterval(async () => {
-        const d = await api.get('/sync');
-        if (!d.running) {
-          clearInterval(poll);
+      syncPollRef.current = setInterval(async () => {
+        try {
+          const d = await api.get('/sync');
+          if (!d.running) {
+            clearInterval(syncPollRef.current);
+            setSyncing(false);
+            fetchAll();
+          }
+        } catch {
+          clearInterval(syncPollRef.current);
           setSyncing(false);
-          fetchAll();
         }
       }, 2000);
     } catch {
@@ -411,6 +426,13 @@ export default function Tablet() {
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Erro de carregamento */}
+        {fetchError && (
+          <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-3 text-center">
+            {fetchError}
+          </p>
+        )}
 
         {/* Tabela */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden">

@@ -154,7 +154,7 @@ const orderRepository = {
       JOIN stages st ON st.id = s.stage_id
       JOIN production_orders o ON o.id = s.order_id
       JOIN products p ON p.id = o.product_id
-      WHERE o.production_date = ?
+      WHERE date(COALESCE(s.started_at, o.production_date || 'T00:00:00')) = ?
       ORDER BY COALESCE(s.started_at, s.created_at) ASC, s.id ASC
     `).all(date);
   },
