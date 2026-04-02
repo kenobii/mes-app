@@ -41,7 +41,7 @@ function durationLabel(started_at, finished_at) {
   return m > 0 ? `${h}h${m}min` : `${h}h`;
 }
 
-const EMPTY_NEW = { order_id: '', stage_id: '', started_at: '', finished_at: '' };
+const EMPTY_NEW = { order_id: '', stage_id: '', started_at: '', finished_at: '', date: '' };
 
 // ─── Linha em modo leitura ────────────────────────────────────────────────────
 
@@ -81,11 +81,11 @@ function ReadRow({ step, onEdit, onDelete, deleting }) {
 
 // ─── Linha em modo edição ─────────────────────────────────────────────────────
 
-function EditRow({ data, orders, stages, onChange, onSave, onCancel, saving, error, selectedDate }) {
+function EditRow({ data, orders, stages, onChange, onSave, onCancel, saving, error }) {
   return (
     <>
       <tr className="border-b border-primary/30 bg-primary/5">
-        {/* Produto */}
+        {/* Produto + Data */}
         <td className="px-2 py-2">
           <select
             value={data.order_id}
@@ -97,6 +97,12 @@ function EditRow({ data, orders, stages, onChange, onSave, onCancel, saving, err
               <option key={o.id} value={o.id}>{o.product_name}</option>
             ))}
           </select>
+          <input
+            type="date"
+            value={data.date}
+            onChange={e => onChange({ ...data, date: e.target.value })}
+            className="mt-1 w-full border border-border rounded-lg px-2 py-1.5 text-xs bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+          />
         </td>
 
         {/* Etapa */}
@@ -199,7 +205,8 @@ export default function Tablet() {
     try {
       const [stepsData, ordersData] = await Promise.all([
         api.get(`/orders/steps?date=${selectedDate}`),
-        api.get(`/orders?date_from=${selectedDate}&date_to=${selectedDate}`),
+        // Busca todas as ordens Pendente/Em Andamento (qualquer data) para o dropdown
+        api.get(`/orders?status=Pendente,Em+Andamento`),
       ]);
       setSteps(stepsData);
       setOrders(ordersData);
@@ -245,7 +252,7 @@ export default function Tablet() {
 
   function openNewRow() {
     setEditingId(null);
-    setNewRow({ ...EMPTY_NEW });
+    setNewRow({ ...EMPTY_NEW, date: selectedDate });
     setNewError(null);
   }
 
@@ -259,8 +266,8 @@ export default function Tablet() {
     try {
       await api.post(`/orders/${newRow.order_id}/steps`, {
         stage_id:    Number(newRow.stage_id),
-        started_at:  toISO(selectedDate, newRow.started_at),
-        finished_at: toISO(selectedDate, newRow.finished_at) ?? null,
+        started_at:  toISO(newRow.date, newRow.started_at),
+        finished_at: toISO(newRow.date, newRow.finished_at) ?? null,
       });
       setNewRow(null);
       fetchAll();
@@ -281,6 +288,7 @@ export default function Tablet() {
       stage_id:    String(step.stage_id),
       started_at:  toTime(step.started_at),
       finished_at: toTime(step.finished_at),
+      date:        step.started_at?.slice(0, 10) || selectedDate,
     });
     setEditError(null);
   }
@@ -294,8 +302,8 @@ export default function Tablet() {
     try {
       await api.put(`/orders/steps/${editingId}`, {
         stage_id:    Number(editData.stage_id),
-        started_at:  toISO(selectedDate, editData.started_at),
-        finished_at: toISO(selectedDate, editData.finished_at) ?? null,
+        started_at:  toISO(editData.date, editData.started_at),
+        finished_at: toISO(editData.date, editData.finished_at) ?? null,
       });
       setEditingId(null);
       fetchAll();
@@ -442,7 +450,6 @@ export default function Tablet() {
                         onCancel={() => setEditingId(null)}
                         saving={editSaving}
                         error={editError}
-                        selectedDate={selectedDate}
                       />
                     ) : (
                       <ReadRow
@@ -466,7 +473,6 @@ export default function Tablet() {
                       onCancel={() => setNewRow(null)}
                       saving={newSaving}
                       error={newError}
-                      selectedDate={selectedDate}
                     />
                   )}
                 </tbody>
