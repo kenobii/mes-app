@@ -161,6 +161,10 @@ const orderRepository = {
 
   updateStep: (stepId, { stage_id, started_at, finished_at }) => {
     const gross = (started_at && finished_at) ? calcMinutes(started_at, finished_at) : null;
+    const totalPause = db.prepare(
+      `SELECT COALESCE(SUM(duration_minutes), 0) AS total FROM production_pauses WHERE step_id = ?`
+    ).get(stepId)?.total ?? 0;
+    const net = gross != null ? gross - totalPause : null;
     db.prepare(`
       UPDATE production_steps SET
         stage_id           = COALESCE(?, stage_id),
@@ -169,7 +173,7 @@ const orderRepository = {
         gross_time_minutes = ?,
         net_time_minutes   = ?
       WHERE id = ?
-    `).run(stage_id ?? null, started_at ?? null, finished_at ?? null, gross, gross, stepId);
+    `).run(stage_id ?? null, started_at ?? null, finished_at ?? null, gross, net, stepId);
     return db.prepare(`
       SELECT s.*, st.name AS stage_name, o.product_id, p.name AS product_name
       FROM production_steps s
